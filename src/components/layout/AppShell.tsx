@@ -71,7 +71,7 @@ export function AppShell({ children, title }: { children: React.ReactNode; title
             <h1 className="text-sm font-semibold tracking-tight">{title}</h1>
           </div>
         </header>
-        <main className="flex-1 p-6 overflow-x-hidden relative brand-grid">{children}</main>
+        <main className="flex-1 p-6 overflow-x-hidden relative brand-surface">{children}</main>
       </div>
     </div>
   );
