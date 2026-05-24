@@ -74,12 +74,11 @@ export function ProductForm({
   });
 
   return (
-    <>
-      <span onClick={() => setOpen(true)} className="inline-flex">{trigger}</span>
-      <FormModal
-        open={open}
-        onOpenChange={setOpen}
-        title={initial ? "Editar produto" : "Novo produto"}
+    <FormModal
+      open={open}
+      onOpenChange={setOpen}
+      trigger={trigger}
+      title={initial ? "Editar produto" : "Novo produto"}
         description="Cadastre os detalhes técnicos e financeiros do item."
         size="3xl"
         footer={
@@ -219,7 +218,6 @@ export function ProductForm({
             </div>
           </div>
         </div>
-      </FormModal>
-    </>
+    </FormModal>
   );
 }
