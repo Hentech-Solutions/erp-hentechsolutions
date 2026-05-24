@@ -64,6 +64,7 @@ export type CreateEntryInput = {
   product_id?: string | null;
   notes?: string | null;
   items?: SaleItemInput[];
+  discount?: number;
 };
 
 export async function createEntry(input: CreateEntryInput) {
@@ -73,14 +74,15 @@ export async function createEntry(input: CreateEntryInput) {
   if (input.items && input.items.length > 0) {
     const totalAmount = input.items.reduce((s, it) => s + it.quantity * it.unit_price, 0);
     const totalCost = input.items.reduce((s, it) => s + it.quantity * it.unit_cost, 0);
-    computedAmount = totalAmount;
+    const discount = Math.max(0, Math.min(Number(input.discount ?? 0), totalAmount));
+    computedAmount = totalAmount - discount;
     const { data: sale, error: saleErr } = await supabase
       .from("sales")
       .insert({
         sale_date: input.reference_date,
         total_amount: totalAmount,
         total_cost: totalCost,
-        discount: 0,
+        discount,
         notes: input.description ?? null,
       })
       .select()
