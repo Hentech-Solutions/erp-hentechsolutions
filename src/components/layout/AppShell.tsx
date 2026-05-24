@@ -1,6 +1,8 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Wallet, Package } from "lucide-react";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { LayoutDashboard, Wallet, Package, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import brandLogo from "@/assets/brand-logo.png";
 import brandWatermark from "@/assets/brand-watermark.png";
 
@@ -12,6 +14,17 @@ const nav = [
 
 export function AppShell({ children, title }: { children: React.ReactNode; title?: string }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+
+  async function handleLogout() {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    navigate({ to: "/login" });
+  }
+
   return (
     <div className="min-h-screen flex w-full bg-background text-foreground">
       <aside className="w-64 shrink-0 border-r border-sidebar-border bg-sidebar flex flex-col relative overflow-hidden">
@@ -66,10 +79,18 @@ export function AppShell({ children, title }: { children: React.ReactNode; title
           }}
         />
         <header className="h-14 border-b border-border flex items-center px-6 sticky top-0 bg-background/85 backdrop-blur-xl z-10">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-1">
             <div className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--primary)]" />
             <h1 className="text-sm font-semibold tracking-tight">{title}</h1>
           </div>
+          <button
+            onClick={handleLogout}
+            className="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition"
+            title="Sair"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            Sair
+          </button>
         </header>
         <main className="flex-1 p-6 overflow-x-hidden relative brand-surface">{children}</main>
       </div>
