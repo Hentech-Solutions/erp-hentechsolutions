@@ -34,10 +34,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Sistema de Gestão Empresarial" },
-      { name: "description", content: "Dashboard executivo, centro financeiro e gestão de produtos." },
+      { title: "Hentech ERP — Gestão Empresarial" },
+      { name: "description", content: "ERP Hentech Solutions: dashboard executivo, centro financeiro e gestão de produtos." },
+      { name: "theme-color", content: "#0a1a3a" },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", type: "image/png", href: "/favicon.png" },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
