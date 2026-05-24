@@ -62,3 +62,28 @@ export async function productSalesCheck(id: string) {
   if (error) throw error;
   return { has_sales: (count ?? 0) > 0, sales_count: count ?? 0 };
 }
+
+/** Returns map productId -> total quantity sold across active (non-deleted) sale entries. */
+export async function getSalesCountByProduct(productIds: string[]): Promise<Record<string, number>> {
+  if (productIds.length === 0) return {};
+  const { data: entries, error: e1 } = await supabase
+    .from("financial_entries")
+    .select("sale_id")
+    .is("deleted_at", null)
+    .not("sale_id", "is", null);
+  if (e1) throw e1;
+  const saleIds = (entries ?? []).map((e) => e.sale_id as string).filter(Boolean);
+  if (saleIds.length === 0) return {};
+  const { data: items, error: e2 } = await supabase
+    .from("sale_items")
+    .select("product_id, quantity")
+    .in("sale_id", saleIds)
+    .in("product_id", productIds);
+  if (e2) throw e2;
+  const map: Record<string, number> = {};
+  for (const it of items ?? []) {
+    if (!it.product_id) continue;
+    map[it.product_id] = (map[it.product_id] ?? 0) + Number(it.quantity);
+  }
+  return map;
+}
