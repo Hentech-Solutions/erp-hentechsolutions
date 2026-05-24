@@ -225,10 +225,12 @@ export function EntryForm({ trigger, defaultType }: { trigger: React.ReactNode; 
                 {items.map((it, i) => {
                   const p: any = productById(it.product_id);
                   return (
-                    <div key={i} className="flex gap-2 items-start">
-                      <div className="flex-1 space-y-1">
+                    <div key={i} className="flex gap-2 items-start min-w-0">
+                      <div className="flex-1 min-w-0 space-y-1">
                         <Select value={it.product_id} onValueChange={(v) => updateItem(i, { product_id: v })}>
-                          <SelectTrigger className="h-9"><SelectValue placeholder="Produto…" /></SelectTrigger>
+                          <SelectTrigger className="h-9 w-full min-w-0 [&>span]:truncate [&>span]:block [&>span]:text-left">
+                            <SelectValue placeholder="Produto…" />
+                          </SelectTrigger>
                           <SelectContent>
                             {products.map((pr: any) => (
                               <SelectItem key={pr.id} value={pr.id}>
