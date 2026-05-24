@@ -13,7 +13,7 @@ import { last12Months, type Period } from "@/lib/periods";
 import { getProfitBreakdown } from "@/lib/data/financial";
 import { formatBRL, formatPercentPlain } from "@/lib/formatters";
 
-export const Route = createFileRoute("/financeiro")({
+export const Route = createFileRoute("/_authenticated/financeiro")({
   head: () => ({ meta: [{ title: "Centro Financeiro — Gestão Empresarial" }] }),
   component: FinancePage,
 });

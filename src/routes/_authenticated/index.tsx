@@ -12,7 +12,7 @@ import { last12Months, type Period } from "@/lib/periods";
 import { getKpis, getRevenueSeries, getCashFlowSeries, getExpenseBreakdown, getAlerts } from "@/lib/data/dashboard";
 import { formatBRL, formatPercentPlain } from "@/lib/formatters";
 
-export const Route = createFileRoute("/")({ component: Dashboard });
+export const Route = createFileRoute("/_authenticated/")({ component: Dashboard });
 
 function Dashboard() {
   const [period, setPeriod] = useState<Period>(last12Months());
