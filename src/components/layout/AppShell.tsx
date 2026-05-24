@@ -1,6 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { LayoutDashboard, Wallet, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
+import brandLogo from "@/assets/brand-logo.png";
+import brandWatermark from "@/assets/brand-watermark.png";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -12,14 +14,20 @@ export function AppShell({ children, title }: { children: React.ReactNode; title
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
     <div className="min-h-screen flex w-full bg-background text-foreground">
-      <aside className="w-60 shrink-0 border-r border-sidebar-border bg-sidebar flex flex-col">
-        <div className="h-14 flex items-center px-5 border-b border-sidebar-border">
-          <div className="h-8 w-8 rounded-md bg-primary/15 flex items-center justify-center mr-2.5">
-            <span className="text-primary text-sm font-bold">GE</span>
-          </div>
-          <span className="font-semibold tracking-tight text-sidebar-foreground">Gestão Empresarial</span>
+      <aside className="w-64 shrink-0 border-r border-sidebar-border bg-sidebar flex flex-col relative overflow-hidden">
+        {/* subtle brand watermark */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-10 -right-10 w-72 h-72 opacity-[0.06] bg-no-repeat bg-contain bg-center"
+          style={{ backgroundImage: `url(${brandWatermark})` }}
+        />
+        <div className="px-5 py-5 border-b border-sidebar-border relative">
+          <img src={brandLogo} alt="Hentech Solutions" className="h-10 w-auto object-contain" />
+          <p className="mt-2 text-[10px] tracking-[0.18em] uppercase text-primary/70 font-medium">
+            Tecnologia que conecta
+          </p>
         </div>
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-3 space-y-1 relative">
           {nav.map((n) => {
             const active = pathname === n.to;
             const Icon = n.icon;
@@ -28,27 +36,42 @@ export function AppShell({ children, title }: { children: React.ReactNode; title
                 key={n.to}
                 to={n.to}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                  "group relative flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all",
                   active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-[inset_2px_0_0_0_var(--primary)]"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className={cn("h-4 w-4 transition-colors", active ? "text-primary" : "group-hover:text-primary/80")} />
                 {n.label}
               </Link>
             );
           })}
         </nav>
-        <div className="p-3 text-[10px] tracking-wider uppercase text-muted-foreground border-t border-sidebar-border">
-          v1.0 · Single-tenant
+        <div className="p-4 border-t border-sidebar-border relative">
+          <p className="text-[9px] tracking-[0.2em] uppercase text-muted-foreground/80">
+            Hentech ERP · v1.0
+          </p>
+          <p className="text-[10px] text-muted-foreground/60 mt-0.5">Soluções que transformam</p>
         </div>
       </aside>
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b border-border flex items-center px-6 sticky top-0 bg-background/80 backdrop-blur z-10">
-          <h1 className="text-sm font-semibold tracking-tight">{title}</h1>
+      <div className="flex-1 flex flex-col min-w-0 relative">
+        {/* ambient glow */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute top-0 left-1/3 right-0 h-[400px] opacity-40"
+          style={{
+            background:
+              "radial-gradient(60% 80% at 70% 0%, color-mix(in oklab, var(--primary) 18%, transparent), transparent 70%)",
+          }}
+        />
+        <header className="h-14 border-b border-border flex items-center px-6 sticky top-0 bg-background/85 backdrop-blur-xl z-10">
+          <div className="flex items-center gap-3">
+            <div className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--primary)]" />
+            <h1 className="text-sm font-semibold tracking-tight">{title}</h1>
+          </div>
         </header>
-        <main className="flex-1 p-6 overflow-x-hidden">{children}</main>
+        <main className="flex-1 p-6 overflow-x-hidden relative brand-grid">{children}</main>
       </div>
     </div>
   );
