@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { listProducts, listProductCategories, softDeleteProduct, type Product } from "@/lib/data/products";
+import { listProducts, listProductCategories, softDeleteProduct, getSalesCountByProduct, type Product } from "@/lib/data/products";
 import { formatBRL, formatPercentPlain, formatDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { ProductForm } from "./ProductForm";
@@ -24,6 +24,12 @@ export function ProductTable() {
     queryKey: ["products", { search, status, categoryId, page }],
     queryFn: () =>
       listProducts({ search, status, categoryId: categoryId === "all" ? null : categoryId, page, pageSize: 50 }),
+  });
+  const productIds = (data?.data ?? []).map((p: any) => p.id);
+  const { data: salesMap = {} } = useQuery({
+    queryKey: ["product-sales-count", productIds],
+    queryFn: () => getSalesCountByProduct(productIds),
+    enabled: productIds.length > 0,
   });
 
   const del = useMutation({
@@ -68,6 +74,7 @@ export function ProductTable() {
               <th className="text-right px-4 py-3">Preço</th>
               <th className="text-right px-4 py-3">Custo</th>
               <th className="text-right px-4 py-3">Margem</th>
+              <th className="text-right px-4 py-3">Vendas</th>
               <th className="text-left px-4 py-3">Criado</th>
               <th className="text-center px-4 py-3">Status</th>
               <th className="text-right px-4 py-3"></th>
@@ -75,11 +82,11 @@ export function ProductTable() {
           </thead>
           <tbody>
             {isLoading && (
-              <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">Carregando…</td></tr>
+              <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">Carregando…</td></tr>
             )}
             {!isLoading && data?.data.length === 0 && (
               <tr>
-                <td colSpan={8} className="p-12 text-center">
+                <td colSpan={9} className="p-12 text-center">
                   <Package className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                   <p className="text-sm text-muted-foreground">Nenhum produto encontrado</p>
                 </td>
@@ -96,6 +103,9 @@ export function ProductTable() {
                 <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{formatBRL(p.cost)}</td>
                 <td className={cn("px-4 py-3 text-right tabular-nums font-medium", Number(p.margin) < 0 ? "text-destructive" : "text-success")}>
                   {formatPercentPlain(p.margin)}
+                </td>
+                <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                  {salesMap[p.id] ?? 0}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground text-xs">{formatDate(p.created_at)}</td>
                 <td className="px-4 py-3 text-center">
