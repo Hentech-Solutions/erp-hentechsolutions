@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -119,7 +119,6 @@ function LoginPage() {
         <p className="mt-6 text-center text-[10px] tracking-[0.2em] uppercase text-muted-foreground/60">
           Hentech ERP · v1.0
         </p>
-        <Link to="/" className="hidden" />
       </div>
     </div>
   );
