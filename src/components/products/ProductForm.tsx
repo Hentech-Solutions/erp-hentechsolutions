@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormModal, FieldGroupLabel } from "@/components/ui/form-modal";
-import { createProduct, updateProduct, listProductCategories, type Product } from "@/lib/data/products";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Plus } from "lucide-react";
+import { createProduct, updateProduct, listProductCategories, createProductCategory, type Product } from "@/lib/data/products";
 import { formatPercentPlain } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 
@@ -206,7 +208,12 @@ export function ProductForm({
             </div>
 
             <div className="space-y-1.5">
-              <Label>Categoria</Label>
+              <div className="flex items-center justify-between">
+                <Label>Categoria</Label>
+                <NewCategoryButton
+                  onCreated={(c) => setCategoryId(c.id)}
+                />
+              </div>
               <Select value={categoryId} onValueChange={setCategoryId}>
                 <SelectTrigger><SelectValue placeholder="Sem categoria" /></SelectTrigger>
                 <SelectContent>
@@ -219,5 +226,73 @@ export function ProductForm({
           </div>
         </div>
     </FormModal>
+  );
+}
+
+function NewCategoryButton({ onCreated }: { onCreated: (c: { id: string; name: string }) => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const qc = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: () => createProductCategory({ name: name.trim(), description: description.trim() || null }),
+    onSuccess: (cat) => {
+      toast.success("Categoria criada");
+      qc.invalidateQueries({ queryKey: ["product-categories"] });
+      onCreated({ id: cat.id, name: cat.name });
+      setOpen(false);
+      setName("");
+      setDescription("");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao criar categoria"),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs text-primary hover:text-primary">
+          <Plus className="h-3.5 w-3.5 mr-1" />
+          Nova categoria
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Nova categoria de produto</DialogTitle>
+          <DialogDescription>Organize seu catálogo agrupando produtos similares.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="new-cat-name">Nome *</Label>
+            <Input
+              id="new-cat-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={100}
+              placeholder="Ex: Cartões NFC"
+              autoFocus
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="new-cat-desc">Descrição</Label>
+            <Textarea
+              id="new-cat-desc"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={500}
+              rows={3}
+              placeholder="Opcional"
+              className="resize-none"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+          <Button onClick={() => mutation.mutate()} disabled={!name.trim() || mutation.isPending}>
+            {mutation.isPending ? "Criando…" : "Criar categoria"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
