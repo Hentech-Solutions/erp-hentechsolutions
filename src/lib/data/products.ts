@@ -37,6 +37,16 @@ export async function listProductCategories() {
   return data ?? [];
 }
 
+export async function createProductCategory(input: { name: string; description?: string | null }) {
+  const { data, error } = await supabase
+    .from("product_categories")
+    .insert({ name: input.name, description: input.description ?? null })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 export async function createProduct(input: Database["public"]["Tables"]["products"]["Insert"]) {
   const { data, error } = await supabase.from("products").insert(input).select().single();
   if (error) throw error;
