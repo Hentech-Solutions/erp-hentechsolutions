@@ -127,13 +127,13 @@
   background: color-mix(in oklab, var(--foreground) 22%, transparent);
 }
 
-/* Subtle circuit-grid backdrop for the main app surface */
-.brand-grid {
+/* Soft brand ambience for the main app surface — subtle radial glows,
+   no grid lines so dense data stays perfectly readable. */
+.brand-surface {
   background-image:
-    linear-gradient(var(--circuit-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--circuit-line) 1px, transparent 1px);
-  background-size: 56px 56px;
-  background-position: -1px -1px;
+    radial-gradient(900px 500px at 100% -10%, color-mix(in oklab, var(--primary) 10%, transparent), transparent 60%),
+    radial-gradient(700px 400px at -10% 110%, color-mix(in oklab, var(--primary) 7%, transparent), transparent 65%);
+  background-attachment: fixed;
 }
 
 .brand-glow-text {
