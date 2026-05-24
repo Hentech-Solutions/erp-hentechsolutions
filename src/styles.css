@@ -53,42 +53,48 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(0.13 0.018 270);
-  --foreground: oklch(0.93 0.01 270);
-  --card: oklch(0.16 0.02 270);
-  --card-foreground: oklch(0.93 0.01 270);
-  --popover: oklch(0.18 0.02 270);
-  --popover-foreground: oklch(0.93 0.01 270);
-  --primary: oklch(0.62 0.19 275);
-  --primary-foreground: oklch(0.98 0.005 270);
-  --secondary: oklch(0.22 0.02 270);
-  --secondary-foreground: oklch(0.93 0.01 270);
-  --muted: oklch(0.22 0.02 270);
-  --muted-foreground: oklch(0.62 0.02 270);
-  --accent: oklch(0.25 0.04 275);
-  --accent-foreground: oklch(0.95 0.01 270);
+  /* Hentech Solutions — deep navy + electric tech blue + chrome silver */
+  --background: oklch(0.11 0.03 250);
+  --foreground: oklch(0.94 0.012 230);
+  --card: oklch(0.15 0.035 250);
+  --card-foreground: oklch(0.94 0.012 230);
+  --popover: oklch(0.17 0.04 250);
+  --popover-foreground: oklch(0.94 0.012 230);
+  --primary: oklch(0.68 0.18 245);
+  --primary-foreground: oklch(0.99 0.005 240);
+  --secondary: oklch(0.21 0.04 250);
+  --secondary-foreground: oklch(0.94 0.012 230);
+  --muted: oklch(0.2 0.035 250);
+  --muted-foreground: oklch(0.66 0.025 235);
+  --accent: oklch(0.27 0.07 245);
+  --accent-foreground: oklch(0.96 0.01 230);
   --destructive: oklch(0.62 0.22 25);
-  --destructive-foreground: oklch(0.98 0.005 270);
-  --success: oklch(0.7 0.17 145);
-  --success-foreground: oklch(0.12 0.02 145);
-  --warning: oklch(0.78 0.16 75);
-  --warning-foreground: oklch(0.18 0.04 75);
-  --border: oklch(0.24 0.02 270);
-  --input: oklch(0.22 0.02 270);
-  --ring: oklch(0.62 0.19 275);
-  --chart-1: oklch(0.62 0.19 275);
-  --chart-2: oklch(0.7 0.17 145);
-  --chart-3: oklch(0.75 0.16 50);
-  --chart-4: oklch(0.65 0.2 340);
-  --chart-5: oklch(0.7 0.15 200);
-  --sidebar: oklch(0.14 0.018 270);
-  --sidebar-foreground: oklch(0.85 0.01 270);
-  --sidebar-primary: oklch(0.62 0.19 275);
-  --sidebar-primary-foreground: oklch(0.98 0.005 270);
-  --sidebar-accent: oklch(0.2 0.03 275);
-  --sidebar-accent-foreground: oklch(0.95 0.01 270);
-  --sidebar-border: oklch(0.22 0.02 270);
-  --sidebar-ring: oklch(0.62 0.19 275);
+  --destructive-foreground: oklch(0.98 0.005 240);
+  --success: oklch(0.72 0.17 165);
+  --success-foreground: oklch(0.12 0.03 165);
+  --warning: oklch(0.8 0.16 80);
+  --warning-foreground: oklch(0.2 0.04 80);
+  --border: oklch(0.24 0.04 250);
+  --input: oklch(0.21 0.04 250);
+  --ring: oklch(0.68 0.18 245);
+  --chart-1: oklch(0.68 0.18 245);
+  --chart-2: oklch(0.78 0.13 215);
+  --chart-3: oklch(0.72 0.17 165);
+  --chart-4: oklch(0.78 0.14 80);
+  --chart-5: oklch(0.65 0.2 320);
+  --sidebar: oklch(0.09 0.035 252);
+  --sidebar-foreground: oklch(0.86 0.012 230);
+  --sidebar-primary: oklch(0.68 0.18 245);
+  --sidebar-primary-foreground: oklch(0.99 0.005 240);
+  --sidebar-accent: oklch(0.2 0.06 248);
+  --sidebar-accent-foreground: oklch(0.96 0.01 230);
+  --sidebar-border: oklch(0.2 0.04 250);
+  --sidebar-ring: oklch(0.68 0.18 245);
+
+  /* Brand gradients & effects */
+  --brand-gradient: linear-gradient(135deg, oklch(0.68 0.18 245), oklch(0.78 0.13 215));
+  --brand-glow: 0 0 40px color-mix(in oklab, oklch(0.68 0.18 245) 35%, transparent);
+  --circuit-line: color-mix(in oklab, oklch(0.68 0.18 245) 18%, transparent);
 }
 
 @layer base {
@@ -119,4 +125,20 @@
 }
 .form-modal-scroll::-webkit-scrollbar-thumb:hover {
   background: color-mix(in oklab, var(--foreground) 22%, transparent);
+}
+
+/* Subtle circuit-grid backdrop for the main app surface */
+.brand-grid {
+  background-image:
+    linear-gradient(var(--circuit-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--circuit-line) 1px, transparent 1px);
+  background-size: 56px 56px;
+  background-position: -1px -1px;
+}
+
+.brand-glow-text {
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
