@@ -30,6 +30,8 @@ export function EntryForm({ trigger, defaultType }: { trigger: React.ReactNode; 
   const [recurrence, setRecurrence] = useState<Recurrence>("one_time");
   const [items, setItems] = useState<LineItem[]>([]);
   const [specialPrice, setSpecialPrice] = useState(false);
+  const [discountMode, setDiscountMode] = useState<"percent" | "amount">("percent");
+  const [discountValue, setDiscountValue] = useState("0");
   const qc = useQueryClient();
 
   const { data: cats = [] } = useQuery({
@@ -48,16 +50,25 @@ export function EntryForm({ trigger, defaultType }: { trigger: React.ReactNode; 
   const products = prodPage?.data ?? [];
   const productById = (id: string) => products.find((p: any) => p.id === id);
 
-  const computedTotal = items.reduce((s, it) => {
+  const subtotal = items.reduce((s, it) => {
     const p: any = productById(it.product_id);
     return s + (p ? Number(p.price) * it.quantity : 0);
   }, 0);
+  const rawDiscount =
+    discountMode === "percent"
+      ? (subtotal * Math.max(0, Math.min(100, Number(discountValue) || 0))) / 100
+      : Math.max(0, Number(discountValue) || 0);
+  const discountAmount = Math.min(subtotal, rawDiscount);
+  const computedTotal = Math.max(0, subtotal - discountAmount);
 
   useEffect(() => {
     if (open && defaultType) setType(defaultType);
   }, [open, defaultType]);
   useEffect(() => { setCategoryId(""); setItems([]); setSpecialPrice(false); }, [type]);
-  useEffect(() => { if (!isSale) { setItems([]); setSpecialPrice(false); } }, [isSale]);
+  useEffect(() => {
+    if (!isSale) { setItems([]); setSpecialPrice(false); }
+    setDiscountValue("0");
+  }, [isSale]);
 
   const m = useMutation({
     mutationFn: () => {
@@ -83,6 +94,7 @@ export function EntryForm({ trigger, defaultType }: { trigger: React.ReactNode; 
         description: description || null,
         recurrence: productsMode ? "one_time" : recurrence,
         items: saleItems,
+        discount: productsMode ? discountAmount : 0,
       });
     },
     onSuccess: () => {
@@ -92,6 +104,7 @@ export function EntryForm({ trigger, defaultType }: { trigger: React.ReactNode; 
       qc.invalidateQueries({ queryKey: ["product-sales-count"] });
       setOpen(false);
       setAmount("0"); setDescription(""); setItems([]); setSpecialPrice(false);
+      setDiscountValue("0"); setDiscountMode("percent");
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
@@ -248,11 +261,63 @@ export function EntryForm({ trigger, defaultType }: { trigger: React.ReactNode; 
                   <Plus className="h-3.5 w-3.5 mr-1" />Adicionar produto
                 </Button>
 
+                {/* Discount block */}
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Desconto</Label>
+                    <div className="inline-flex rounded-md border border-border/60 bg-background/40 p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setDiscountMode("percent")}
+                        className={cn(
+                          "px-2.5 py-0.5 text-[11px] rounded-sm transition-colors tabular-nums",
+                          discountMode === "percent" ? "bg-primary/15 text-primary font-medium" : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >%</button>
+                      <button
+                        type="button"
+                        onClick={() => setDiscountMode("amount")}
+                        className={cn(
+                          "px-2.5 py-0.5 text-[11px] rounded-sm transition-colors",
+                          discountMode === "amount" ? "bg-primary/15 text-primary font-medium" : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >R$</button>
+                    </div>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min="0"
+                      step={discountMode === "percent" ? "0.1" : "0.01"}
+                      max={discountMode === "percent" ? "100" : undefined}
+                      value={discountValue}
+                      onChange={(e) => setDiscountValue(e.target.value)}
+                      className="tabular-nums pr-10 h-9"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground font-medium">
+                      {discountMode === "percent" ? "%" : "R$"}
+                    </span>
+                  </div>
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between text-[11px] tabular-nums px-1">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span>{formatBRL(subtotal)}</span>
+                    </div>
+                  )}
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between text-[11px] tabular-nums px-1">
+                      <span className="text-destructive">Desconto aplicado</span>
+                      <span className="text-destructive">− {formatBRL(discountAmount)}</span>
+                    </div>
+                  )}
+                </div>
+
                 <div className="rounded-lg p-4 flex justify-between items-center border bg-primary/5 border-primary/25">
                   <div>
                     <p className="text-[10px] uppercase font-bold tracking-widest text-primary">Total</p>
                     <p className="text-xs text-muted-foreground">
                       {validItems.length} {validItems.length === 1 ? "item" : "itens"}
+                      {discountAmount > 0 && " · com desconto"}
                     </p>
                   </div>
                   <span className="text-2xl font-bold tabular-nums tracking-tight text-primary">
