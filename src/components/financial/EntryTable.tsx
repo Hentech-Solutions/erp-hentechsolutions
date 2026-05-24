@@ -28,8 +28,9 @@ export function EntryTable({ type, from, to }: { type?: EntryType | "all"; from?
     onSuccess: (_, id) => {
       qc.invalidateQueries({ queryKey: ["entries"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["product-sales-count"] });
       toast.success("Lançamento removido", {
-        action: { label: "Desfazer", onClick: async () => { await restoreEntry(id); qc.invalidateQueries({ queryKey: ["entries"] }); } },
+        action: { label: "Desfazer", onClick: async () => { await restoreEntry(id); qc.invalidateQueries({ queryKey: ["entries"] }); qc.invalidateQueries({ queryKey: ["product-sales-count"] }); } },
       });
     },
   });
