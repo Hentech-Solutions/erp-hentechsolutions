@@ -44,6 +44,48 @@ export type Database = {
         }
         Relationships: []
       }
+      customers: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          document: string | null
+          document_type: Database["public"]["Enums"]["document_type"] | null
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          person_type: Database["public"]["Enums"]["person_type"]
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          document?: string | null
+          document_type?: Database["public"]["Enums"]["document_type"] | null
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          person_type?: Database["public"]["Enums"]["person_type"]
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          document?: string | null
+          document_type?: Database["public"]["Enums"]["document_type"] | null
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          person_type?: Database["public"]["Enums"]["person_type"]
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dashboard_alerts: {
         Row: {
           created_at: string
@@ -375,6 +417,7 @@ export type Database = {
       sales: {
         Row: {
           created_at: string
+          customer_id: string | null
           discount: number
           external_ref: string | null
           id: string
@@ -386,6 +429,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          customer_id?: string | null
           discount?: number
           external_ref?: string | null
           id?: string
@@ -397,6 +441,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          customer_id?: string | null
           discount?: number
           external_ref?: string | null
           id?: string
@@ -406,7 +451,15 @@ export type Database = {
           total_cost?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sales_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -445,6 +498,7 @@ export type Database = {
     Enums: {
       alert_severity: "info" | "warning" | "critical"
       cash_flow_category: "operational" | "investment" | "financing"
+      document_type: "cpf" | "cnpj"
       expense_recurrence: "one_time" | "monthly" | "quarterly" | "annual"
       financial_entry_type:
         | "revenue"
@@ -458,6 +512,7 @@ export type Database = {
         | "bank_api"
         | "sales_platform"
         | "accounting"
+      person_type: "individual" | "company"
       product_status: "active" | "inactive"
     }
     CompositeTypes: {
@@ -588,6 +643,7 @@ export const Constants = {
     Enums: {
       alert_severity: ["info", "warning", "critical"],
       cash_flow_category: ["operational", "investment", "financing"],
+      document_type: ["cpf", "cnpj"],
       expense_recurrence: ["one_time", "monthly", "quarterly", "annual"],
       financial_entry_type: [
         "revenue",
@@ -603,6 +659,7 @@ export const Constants = {
         "sales_platform",
         "accounting",
       ],
+      person_type: ["individual", "company"],
       product_status: ["active", "inactive"],
     },
   },
