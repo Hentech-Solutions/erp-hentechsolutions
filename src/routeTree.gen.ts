@@ -14,6 +14,8 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedProdutosRouteImport } from './routes/_authenticated/produtos'
 import { Route as AuthenticatedFinanceiroRouteImport } from './routes/_authenticated/financeiro'
+import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated/clientes'
+import { Route as AuthenticatedClientesCustomerIdRouteImport } from './routes/_authenticated/clientes.$customerId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -39,39 +41,70 @@ const AuthenticatedFinanceiroRoute = AuthenticatedFinanceiroRouteImport.update({
   path: '/financeiro',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedClientesRoute = AuthenticatedClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedClientesCustomerIdRoute =
+  AuthenticatedClientesCustomerIdRouteImport.update({
+    id: '/$customerId',
+    path: '/$customerId',
+    getParentRoute: () => AuthenticatedClientesRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/login': typeof LoginRoute
+  '/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/financeiro': typeof AuthenticatedFinanceiroRoute
   '/produtos': typeof AuthenticatedProdutosRoute
+  '/clientes/$customerId': typeof AuthenticatedClientesCustomerIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/financeiro': typeof AuthenticatedFinanceiroRoute
   '/produtos': typeof AuthenticatedProdutosRoute
   '/': typeof AuthenticatedIndexRoute
+  '/clientes/$customerId': typeof AuthenticatedClientesCustomerIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
+  '/_authenticated/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/_authenticated/financeiro': typeof AuthenticatedFinanceiroRoute
   '/_authenticated/produtos': typeof AuthenticatedProdutosRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/clientes/$customerId': typeof AuthenticatedClientesCustomerIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/financeiro' | '/produtos'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/clientes'
+    | '/financeiro'
+    | '/produtos'
+    | '/clientes/$customerId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/financeiro' | '/produtos' | '/'
+  to:
+    | '/login'
+    | '/clientes'
+    | '/financeiro'
+    | '/produtos'
+    | '/'
+    | '/clientes/$customerId'
   id:
     | '__root__'
     | '/_authenticated'
     | '/login'
+    | '/_authenticated/clientes'
     | '/_authenticated/financeiro'
     | '/_authenticated/produtos'
     | '/_authenticated/'
+    | '/_authenticated/clientes/$customerId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -116,16 +149,45 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFinanceiroRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/clientes': {
+      id: '/_authenticated/clientes'
+      path: '/clientes'
+      fullPath: '/clientes'
+      preLoaderRoute: typeof AuthenticatedClientesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/clientes/$customerId': {
+      id: '/_authenticated/clientes/$customerId'
+      path: '/$customerId'
+      fullPath: '/clientes/$customerId'
+      preLoaderRoute: typeof AuthenticatedClientesCustomerIdRouteImport
+      parentRoute: typeof AuthenticatedClientesRoute
+    }
   }
 }
 
+interface AuthenticatedClientesRouteChildren {
+  AuthenticatedClientesCustomerIdRoute: typeof AuthenticatedClientesCustomerIdRoute
+}
+
+const AuthenticatedClientesRouteChildren: AuthenticatedClientesRouteChildren = {
+  AuthenticatedClientesCustomerIdRoute: AuthenticatedClientesCustomerIdRoute,
+}
+
+const AuthenticatedClientesRouteWithChildren =
+  AuthenticatedClientesRoute._addFileChildren(
+    AuthenticatedClientesRouteChildren,
+  )
+
 interface AuthenticatedRouteChildren {
+  AuthenticatedClientesRoute: typeof AuthenticatedClientesRouteWithChildren
   AuthenticatedFinanceiroRoute: typeof AuthenticatedFinanceiroRoute
   AuthenticatedProdutosRoute: typeof AuthenticatedProdutosRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedClientesRoute: AuthenticatedClientesRouteWithChildren,
   AuthenticatedFinanceiroRoute: AuthenticatedFinanceiroRoute,
   AuthenticatedProdutosRoute: AuthenticatedProdutosRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
