@@ -1,71 +1,74 @@
-# Sistema de Gestão Empresarial — Plano de Implementação
+## Módulo de Metas de Vendas e Faturamento
 
-PRD é extenso. Vou construir uma **v1 funcional ponta-a-ponta** cobrindo os 3 módulos centrais (Dashboard, Centro Financeiro, Produtos) com o schema completo do PRD. Vendas e integrações ficam como tabelas + stubs (sem UI) para evolução futura, conforme o próprio PRD sugere.
+Vou adicionar um módulo completo de metas integrado ao ERP, com cadastro de metas, lançamento de vendas vinculadas, visualização no Dashboard e página dedicada de gestão.
 
-## Stack (adaptada)
-O projeto usa **TanStack Start + Vite + Tailwind + shadcn/ui** (não Next.js). Vou seguir essa stack — equivalente em capacidade, com server functions no lugar de API routes. Supabase (Lovable Cloud) idêntico ao PRD.
+### 1. Banco de dados (migração Supabase)
 
-## Etapas
+Criar duas tabelas novas (com RLS no padrão atual do projeto — `authenticated` full CRUD):
 
-### 1. Lovable Cloud + Schema completo
-- Ativar Lovable Cloud
-- Migration única com: todos os enums, 9 tabelas (`product_categories`, `products`, `financial_categories`, `financial_entries`, `sales`, `sale_items`, `dashboard_alerts`, `integration_configs`, `audit_log`), views (`v_monthly_summary`, `v_product_metrics`), trigger `updated_at`, seed de categorias do sistema
-- RLS habilitado em todas as tabelas (políticas permissivas no v1 single-tenant, prontas para auth)
+- **`sales_goals`**: `id`, `title`, `category`, `period_type` (enum `goal_period_type`: weekly/monthly/quarterly), `target_value`, `start_date`, `end_date`, `created_at`.
+- **`sales_entries`**: `id`, `goal_id` (FK → `sales_goals.id` on delete cascade), `amount`, `sale_date`, `note`, `created_at`.
 
-### 2. Design system (cockpit financeiro dark)
-- Tokens em `src/styles.css` conforme paleta do PRD (bg `#0a0a0f`, surface, accent indigo, success/danger/warning)
-- Tipografia com `tabular-nums` para valores
-- Formatters: `formatCurrency` (BRL), `formatPercent`, `formatDate`
+Índices em `goal_id` e `sale_date` para os agregados. Seed com 3 metas de exemplo (mensal, semanal, trimestral) e ~10 lançamentos distribuídos.
 
-### 3. Layout global
-- Sidebar colapsável (240px ↔ 64px) + header
-- Rotas: `/` (dashboard), `/financeiro`, `/produtos`
+> Observação: as tabelas existentes `sales`/`sale_items` continuam sendo a fonte de venda do ERP. Conforme o brief, este módulo usa `sales_entries` próprio para lançamentos manuais contra metas, sem alterar o fluxo de vendas atual.
 
-### 4. Server functions (camada de dados)
-- `products.functions.ts`: list (filtros, paginação, busca), create, update, toggleStatus, softDelete, salesCheck, metrics
-- `financial.functions.ts`: listEntries, createEntry (com geração de recorrências), updateEntry, deleteEntry, summary, cashFlow, expenseBreakdown
-- `dashboard.functions.ts`: KPIs do período + comparativo, série de faturamento, série de fluxo de caixa, top despesas, alertas
+### 2. Camada de dados
 
-### 5. Dashboard
-- 6 KPI Cards com delta vs período anterior
-- Gráfico de faturamento (linha/barra alternável, Recharts)
-- Gráfico de fluxo de caixa (área empilhada)
-- Donut de despesas por categoria (top 5)
-- Painel de alertas (lidos via tabela `dashboard_alerts`, computados on-the-fly no v1)
-- Seletor de período global (presets + custom)
+`src/lib/data/goals.ts` com:
+- `listGoals(periodFilter)` — metas + soma de entries + % atingido + status.
+- `createGoal`, `updateGoal`, `deleteGoal`.
+- `addSaleEntry(goalId, amount, date, note)`.
+- `getGoalsMetrics(periodFilter)` — totais para os 4 KPIs.
+- `getGoalVsRealSeries(periodFilter)` — série mensal meta vs real.
+- `getProgressByCategory(periodFilter)` — barras horizontais por categoria.
+- `getQuarterlyWeeklyAccum(periodFilter)` — acumulado semanal vs meta trimestral.
 
-### 6. Centro Financeiro
-- Tabs: Faturamento · Despesas · Fluxo de Caixa · Investimentos · Análise de Lucro · Histórico
-- Tabela com filtros combinados, agrupamento por dia/semana/mês, totalizadores
-- Modal/sheet de criação de lançamento (validação Zod, recorrência mensal/trimestral/anual gera N entradas)
-- Soft delete com toast "Desfazer"
-- Análise de lucro: breakdown bruto/operacional/líquido + comparativo período anterior
+Helper de status: `>=100` verde, `>=70` amarelo, `<70` vermelho.
 
-### 7. Gestão de Produtos
-- Tabela com busca, filtros (status, categoria, preço, margem), ordenação, paginação
-- Form de criar/editar (margem calculada ao vivo)
-- Toggle de status com modal de confirmação se houver vendas vinculadas
-- Página de detalhe com métricas (via view `v_product_metrics`)
-- Soft delete
+### 3. UI — Página `/metas` (rota `_authenticated/metas.tsx`)
 
-### 8. Edge cases do PRD
-- Validações no server (amount > 0, categoria compatível com tipo, produto ativo para vínculo)
-- SKU único → 409
-- Margem negativa permitida com destaque vermelho
-- Empty states com ilustração contextual
-- Loading via skeletons (Framer Motion shimmer)
+- Header com botão **Nova Meta** (modal usando `FormModal` existente).
+- Grid de cards (`GoalCard`): título, categoria, período formatado, barra de progresso colorida, real vs meta em BRL, badge de status, ações **Lançar venda**, **Editar**, **Excluir**.
+- `GoalForm` (modal): nome, categoria, tipo de período (select), valor alvo (numérico BR), datas início/fim (shadcn Date Picker com `pointer-events-auto`).
+- `SaleEntryForm` (modal a partir do card): valor, data, observação.
 
-## Fora do escopo desta v1
-- UI de Vendas (tabelas existem, sem CRUD)
-- UI de Integrações (tabela `integration_configs` existe, sem painel)
-- Storage de comprovantes (campo `attachment_path` presente, upload futuro)
-- Auth/RBAC (single-tenant, RLS permissiva)
-- Export real (botão presente, retorna placeholder)
+### 4. UI — Seção "Metas" no Dashboard (`_authenticated/index.tsx`)
 
-## Detalhes técnicos
-- Server functions sem `requireSupabaseAuth` no v1 (sem auth ainda); migração para auth é trivial depois
-- TanStack Query para cache/invalidação no client
-- Recharts para gráficos com tooltips customizados
-- Validação Zod compartilhada client/server
+Adicionar abaixo dos blocos atuais:
+- Seletor próprio **Semanal / Mensal / Trimestral** (independente do período executivo já existente, conforme escopo do brief).
+- 4 KPIs: Faturamento Real, Meta do Período, % Atingido, Status (badge colorido).
+- `GoalVsRealChart` — Recharts `LineChart`, linha tracejada (meta) + linha sólida (real) por mês.
+- `CategoryProgressChart` — Recharts `BarChart` horizontal (`layout="vertical"`), barra colorida por % + badge ao lado.
+- `QuarterlyAccumChart` — Recharts `ComposedChart`: barras semanais + linha de acumulado vs linha de meta trimestral.
 
-Vou implementar tudo em sequência, sem pausas para confirmação intermediária. Avise se prefere fatiar diferente (ex: só Dashboard + Produtos primeiro, ou incluir UI de Vendas já na v1).
+Todos com `ChartContainer` do shadcn e formatação BRL via `formatBRL` existente.
+
+### 5. Navegação
+
+Adicionar item **Metas** no `AppShell` (ícone `Target` do lucide-react), entre Clientes e Financeiro.
+
+### 6. Seed de exemplo
+
+Após aprovação da migração, inserir via tool de insert:
+- 3 metas: "Meta Mensal Geral" (mensal, mês corrente), "Meta Semanal Serviços" (semanal, semana corrente), "Meta Trimestral Produtos" (trimestral, trimestre corrente).
+- ~10 `sales_entries` distribuídos para gerar % variados (uma meta acima de 100%, uma entre 70–99%, uma abaixo de 70%) e popular os gráficos.
+
+### Arquivos a criar/editar
+
+**Criar**
+- `supabase/migrations/<ts>_sales_goals.sql`
+- `src/lib/data/goals.ts`
+- `src/components/goals/GoalForm.tsx`
+- `src/components/goals/SaleEntryForm.tsx`
+- `src/components/goals/GoalCard.tsx`
+- `src/components/dashboard/GoalsSection.tsx`
+- `src/components/dashboard/GoalVsRealChart.tsx`
+- `src/components/dashboard/CategoryProgressChart.tsx`
+- `src/components/dashboard/QuarterlyAccumChart.tsx`
+- `src/routes/_authenticated/metas.tsx`
+
+**Editar**
+- `src/components/layout/AppShell.tsx` (item de menu)
+- `src/routes/_authenticated/index.tsx` (renderizar `GoalsSection`)
+- `src/integrations/supabase/types.ts` (regenerado automaticamente pela migração)

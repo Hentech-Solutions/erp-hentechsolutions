@@ -461,6 +461,74 @@ export type Database = {
           },
         ]
       }
+      sales_entries: {
+        Row: {
+          amount: number
+          created_at: string
+          goal_id: string
+          id: string
+          note: string | null
+          sale_date: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          goal_id: string
+          id?: string
+          note?: string | null
+          sale_date: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          goal_id?: string
+          id?: string
+          note?: string | null
+          sale_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_entries_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "sales_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_goals: {
+        Row: {
+          category: string
+          created_at: string
+          end_date: string
+          id: string
+          period_type: Database["public"]["Enums"]["goal_period_type"]
+          start_date: string
+          target_value: number
+          title: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          end_date: string
+          id?: string
+          period_type: Database["public"]["Enums"]["goal_period_type"]
+          start_date: string
+          target_value: number
+          title: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          end_date?: string
+          id?: string
+          period_type?: Database["public"]["Enums"]["goal_period_type"]
+          start_date?: string
+          target_value?: number
+          title?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       v_monthly_summary: {
@@ -506,6 +574,7 @@ export type Database = {
         | "investment"
         | "withdrawal"
         | "capital_in"
+      goal_period_type: "weekly" | "monthly" | "quarterly"
       integration_type:
         | "payment_gateway"
         | "erp"
@@ -652,6 +721,7 @@ export const Constants = {
         "withdrawal",
         "capital_in",
       ],
+      goal_period_type: ["weekly", "monthly", "quarterly"],
       integration_type: [
         "payment_gateway",
         "erp",
