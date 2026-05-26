@@ -1,5 +1,5 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, Wallet, Package, Users, LogOut } from "lucide-react";
+import { LayoutDashboard, Wallet, Package, Users, Target, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import brandWatermark from "@/assets/brand-watermark.png";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/metas", label: "Metas", icon: Target },
   { to: "/financeiro", label: "Centro Financeiro", icon: Wallet },
   { to: "/produtos", label: "Produtos", icon: Package },
   { to: "/clientes", label: "Clientes", icon: Users },
