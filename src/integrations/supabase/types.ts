@@ -468,6 +468,7 @@ export type Database = {
           goal_id: string
           id: string
           note: string | null
+          product_id: string | null
           sale_date: string
         }
         Insert: {
@@ -476,6 +477,7 @@ export type Database = {
           goal_id: string
           id?: string
           note?: string | null
+          product_id?: string | null
           sale_date: string
         }
         Update: {
@@ -484,6 +486,7 @@ export type Database = {
           goal_id?: string
           id?: string
           note?: string | null
+          product_id?: string | null
           sale_date?: string
         }
         Relationships: [
@@ -494,6 +497,20 @@ export type Database = {
             referencedRelation: "sales_goals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sales_entries_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_entries_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_product_metrics"
+            referencedColumns: ["id"]
+          },
         ]
       }
       sales_goals: {
@@ -501,8 +518,11 @@ export type Database = {
           category: string
           created_at: string
           end_date: string
+          goal_start_date: string
           id: string
           period_type: Database["public"]["Enums"]["goal_period_type"]
+          product_id: string | null
+          realized_value: number
           start_date: string
           target_value: number
           title: string
@@ -511,8 +531,11 @@ export type Database = {
           category: string
           created_at?: string
           end_date: string
+          goal_start_date?: string
           id?: string
           period_type: Database["public"]["Enums"]["goal_period_type"]
+          product_id?: string | null
+          realized_value?: number
           start_date: string
           target_value: number
           title: string
@@ -521,13 +544,31 @@ export type Database = {
           category?: string
           created_at?: string
           end_date?: string
+          goal_start_date?: string
           id?: string
           period_type?: Database["public"]["Enums"]["goal_period_type"]
+          product_id?: string | null
+          realized_value?: number
           start_date?: string
           target_value?: number
           title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sales_goals_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_goals_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_product_metrics"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -561,7 +602,7 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      recalc_goal_realized: { Args: { _goal_id: string }; Returns: undefined }
     }
     Enums: {
       alert_severity: "info" | "warning" | "critical"

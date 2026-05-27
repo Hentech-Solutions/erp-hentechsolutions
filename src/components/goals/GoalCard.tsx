@@ -43,9 +43,16 @@ export function GoalCard({ goal }: { goal: GoalWithProgress }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-base font-semibold tracking-tight truncate">{goal.title}</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {goal.category} · {periodLabel[goal.period_type as keyof typeof periodLabel]}
-          </p>
+          {goal.product_name ? (
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              <Badge variant="secondary" className="text-[10px]">Produto: {goal.product_name}</Badge>
+              <span className="text-xs text-muted-foreground">· {periodLabel[goal.period_type as keyof typeof periodLabel]}</span>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {goal.category} · {periodLabel[goal.period_type as keyof typeof periodLabel]}
+            </p>
+          )}
           <p className="text-[11px] text-muted-foreground/80 mt-0.5">
             {formatDate(goal.start_date)} → {formatDate(goal.end_date)}
           </p>

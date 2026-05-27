@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormModal, FieldGroupLabel } from "@/components/ui/form-modal";
-import { createGoal, updateGoal, type GoalPeriod, type SalesGoal } from "@/lib/data/goals";
+import { createGoal, findGoalByProduct, updateGoal, type GoalPeriod, type SalesGoal } from "@/lib/data/goals";
+import { listProducts } from "@/lib/data/products";
 
 export function GoalForm({
   trigger,
@@ -29,7 +30,14 @@ export function GoalForm({
   const [target, setTarget] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [productId, setProductId] = useState<string>("none");
   const qc = useQueryClient();
+
+  const products = useQuery({
+    queryKey: ["products", "for-goals"],
+    queryFn: () => listProducts({ status: "active", pageSize: 200 }),
+    enabled: open,
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -39,6 +47,7 @@ export function GoalForm({
     setTarget(initial ? String(initial.target_value) : "");
     setStartDate(initial?.start_date ?? "");
     setEndDate(initial?.end_date ?? "");
+    setProductId((initial as any)?.product_id ?? "none");
   }, [open, initial]);
 
   const mutation = useMutation({
@@ -49,14 +58,28 @@ export function GoalForm({
       if (!v || v <= 0) throw new Error("Valor alvo inválido");
       if (!startDate || !endDate) throw new Error("Datas obrigatórias");
       if (endDate < startDate) throw new Error("Data fim deve ser maior que início");
-      const payload = {
+      const linkedProduct = productId !== "none" ? productId : null;
+
+      if (linkedProduct) {
+        const existing = await findGoalByProduct(linkedProduct);
+        if (existing && existing.id !== initial?.id) {
+          throw new Error("Já existe uma meta ativa para este produto.");
+        }
+      }
+
+      const payload: any = {
         title: title.trim(),
         category: category.trim(),
         period_type: periodType,
         target_value: v,
         start_date: startDate,
         end_date: endDate,
+        product_id: linkedProduct,
       };
+      // For new goals, goal_start_date defaults to today (DB default). On edit, keep existing.
+      if (!initial && linkedProduct) {
+        payload.goal_start_date = new Date().toISOString().slice(0, 10);
+      }
       return initial ? updateGoal(initial.id, payload) : createGoal(payload);
     },
     onSuccess: () => {
@@ -126,6 +149,29 @@ export function GoalForm({
               <Label htmlFor="g-end">Fim *</Label>
               <Input id="g-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <FieldGroupLabel>Vínculo com produto</FieldGroupLabel>
+          <div className="space-y-1.5">
+            <Label>Vincular a um produto específico</Label>
+            <Select value={productId} onValueChange={setProductId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Opcional — selecione um produto" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sem vínculo (lançamento manual)</SelectItem>
+                {(products.data?.data ?? []).map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {productId !== "none" && (
+              <p className="text-xs text-muted-foreground rounded-md bg-muted/50 border border-border px-3 py-2 mt-1">
+                A partir de hoje, novos lançamentos de venda deste produto serão contabilizados automaticamente nesta meta.
+              </p>
+            )}
           </div>
         </div>
       </div>
