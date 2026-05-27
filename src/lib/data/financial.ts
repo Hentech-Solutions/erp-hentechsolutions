@@ -96,7 +96,6 @@ export async function createEntry(input: CreateEntryInput) {
       unit_price: it.unit_price,
       unit_cost: it.unit_cost,
       discount: 0,
-      subtotal: it.quantity * it.unit_price,
       product_snapshot: { name: it.name, price: it.unit_price, cost: it.unit_cost },
     }));
     const { error: itemsErr } = await supabase.from("sale_items").insert(itemRows);
