@@ -2,7 +2,12 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
 export type GoalPeriod = "weekly" | "monthly" | "quarterly";
-export type SalesGoal = Database["public"]["Tables"]["sales_goals"]["Row"];
+export type SalesGoal = Database["public"]["Tables"]["sales_goals"]["Row"] & {
+  product_id?: string | null;
+  goal_start_date?: string | null;
+  realized_value?: number | null;
+  products?: { id: string; name: string } | null;
+};
 export type SalesEntry = Database["public"]["Tables"]["sales_entries"]["Row"];
 export type SalesGoalInsert = Database["public"]["Tables"]["sales_goals"]["Insert"];
 
@@ -10,6 +15,7 @@ export type GoalWithProgress = SalesGoal & {
   real_value: number;
   pct: number;
   status: "success" | "warning" | "danger";
+  product_name?: string | null;
 };
 
 export function statusFor(pct: number): "success" | "warning" | "danger" {
@@ -42,33 +48,27 @@ export function currentRange(period: GoalPeriod): { from: string; to: string } {
   return { from: iso(start), to: iso(end) };
 }
 
-async function getEntriesByGoals(goalIds: string[]): Promise<Record<string, number>> {
-  if (goalIds.length === 0) return {};
-  const { data, error } = await supabase
-    .from("sales_entries")
-    .select("goal_id, amount")
-    .in("goal_id", goalIds);
-  if (error) throw error;
-  const map: Record<string, number> = {};
-  for (const r of data ?? []) {
-    map[r.goal_id] = (map[r.goal_id] ?? 0) + Number(r.amount);
-  }
-  return map;
-}
-
 /** List all goals (optionally filter to period type). */
 export async function listGoals(periodType?: GoalPeriod): Promise<GoalWithProgress[]> {
-  let q = supabase.from("sales_goals").select("*").order("start_date", { ascending: false });
+  let q = supabase
+    .from("sales_goals")
+    .select("*, products(id, name)")
+    .order("start_date", { ascending: false });
   if (periodType) q = q.eq("period_type", periodType);
   const { data, error } = await q;
   if (error) throw error;
-  const goals = data ?? [];
-  const realMap = await getEntriesByGoals(goals.map((g) => g.id));
+  const goals = (data ?? []) as any[];
   return goals.map((g) => {
-    const real = realMap[g.id] ?? 0;
+    const real = Number(g.realized_value ?? 0);
     const target = Number(g.target_value);
     const pct = target > 0 ? (real / target) * 100 : 0;
-    return { ...g, real_value: real, pct, status: statusFor(pct) };
+    return {
+      ...g,
+      real_value: real,
+      pct,
+      status: statusFor(pct),
+      product_name: g.products?.name ?? null,
+    };
   });
 }
 
@@ -82,20 +82,8 @@ export async function getPeriodMetrics(periodType: GoalPeriod) {
     .lte("start_date", range.to)
     .gte("end_date", range.from);
   if (error) throw error;
-  const goalIds = (goals ?? []).map((g) => g.id);
   const target = (goals ?? []).reduce((s, g) => s + Number(g.target_value), 0);
-
-  let real = 0;
-  if (goalIds.length > 0) {
-    const { data: entries, error: e2 } = await supabase
-      .from("sales_entries")
-      .select("amount")
-      .in("goal_id", goalIds)
-      .gte("sale_date", range.from)
-      .lte("sale_date", range.to);
-    if (e2) throw e2;
-    real = (entries ?? []).reduce((s, r) => s + Number(r.amount), 0);
-  }
+  const real = (goals ?? []).reduce((s, g: any) => s + Number(g.realized_value ?? 0), 0);
   const pct = target > 0 ? (real / target) * 100 : 0;
   return { real, target, pct, status: statusFor(pct), range };
 }
@@ -244,8 +232,18 @@ export async function addSaleEntry(input: {
   amount: number;
   sale_date: string;
   note?: string | null;
+  product_id?: string | null;
 }) {
   const { data, error } = await supabase.from("sales_entries").insert(input).select().single();
   if (error) throw error;
   return data;
+}
+
+/** Find a goal linked to a product (active = end_date >= today by default). */
+export async function findGoalByProduct(productId: string, opts: { activeOnly?: boolean } = {}) {
+  let q = supabase.from("sales_goals").select("*").eq("product_id", productId).limit(1);
+  if (opts.activeOnly !== false) q = q.gte("end_date", new Date().toISOString().slice(0, 10));
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? [])[0] ?? null;
 }
