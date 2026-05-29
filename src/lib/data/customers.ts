@@ -60,12 +60,18 @@ export async function softDeleteCustomer(id: string) {
 }
 
 export async function customerSalesCount(id: string) {
-  const { count, error } = await supabase
+  const { count: salesCount, error } = await supabase
     .from("sales")
     .select("id", { count: "exact", head: true })
     .eq("customer_id", id);
   if (error) throw error;
-  return count ?? 0;
+  const { count: entriesCount, error: e2 } = await supabase
+    .from("financial_entries")
+    .select("id", { count: "exact", head: true })
+    .eq("customer_id", id)
+    .is("deleted_at", null);
+  if (e2) throw e2;
+  return (salesCount ?? 0) + (entriesCount ?? 0);
 }
 
 export type CustomerMetrics = {
@@ -76,13 +82,7 @@ export type CustomerMetrics = {
 };
 
 export async function getCustomerMetrics(id: string): Promise<CustomerMetrics> {
-  const { data, error } = await supabase
-    .from("sales")
-    .select("total_amount, sale_date")
-    .eq("customer_id", id)
-    .order("sale_date", { ascending: false });
-  if (error) throw error;
-  const rows = data ?? [];
+  const rows = await getCustomerSales(id);
   const total = rows.reduce((s, r) => s + Number(r.total_amount ?? 0), 0);
   const count = rows.length;
   return {
@@ -94,13 +94,35 @@ export async function getCustomerMetrics(id: string): Promise<CustomerMetrics> {
 }
 
 export async function getCustomerSales(id: string) {
-  const { data, error } = await supabase
+  const { data: sales, error } = await supabase
     .from("sales")
     .select("id, sale_date, total_amount, total_cost, discount, notes")
     .eq("customer_id", id)
     .order("sale_date", { ascending: false });
   if (error) throw error;
-  return data ?? [];
+  const { data: entries, error: e2 } = await supabase
+    .from("financial_entries")
+    .select("id, reference_date, amount, description, sale_id")
+    .eq("customer_id", id)
+    .eq("type", "revenue")
+    .is("deleted_at", null)
+    .order("reference_date", { ascending: false });
+  if (e2) throw e2;
+  // Exclude financial_entries already linked to a sale to avoid double counting
+  const serviceRows = (entries ?? [])
+    .filter((e) => !e.sale_id)
+    .map((e) => ({
+      id: e.id,
+      sale_date: e.reference_date,
+      total_amount: Number(e.amount),
+      total_cost: 0,
+      discount: 0,
+      notes: e.description ?? "Prestação de serviço",
+    }));
+  const all = [...(sales ?? []), ...serviceRows].sort((a, b) =>
+    a.sale_date < b.sale_date ? 1 : -1,
+  );
+  return all;
 }
 
 /** Aggregate metrics for a list of customer ids in one round-trip. */
@@ -108,21 +130,57 @@ export async function getCustomersMetricsMap(
   ids: string[],
 ): Promise<Record<string, { total_spent: number; last_purchase: string | null; sales_count: number }>> {
   if (ids.length === 0) return {};
-  const { data, error } = await supabase
+  const { data: sales, error } = await supabase
     .from("sales")
     .select("customer_id, total_amount, sale_date")
     .in("customer_id", ids);
   if (error) throw error;
+  const { data: entries, error: e2 } = await supabase
+    .from("financial_entries")
+    .select("customer_id, amount, reference_date, sale_id")
+    .in("customer_id", ids)
+    .eq("type", "revenue")
+    .is("deleted_at", null);
+  if (e2) throw e2;
   const map: Record<string, { total_spent: number; last_purchase: string | null; sales_count: number }> = {};
-  for (const r of data ?? []) {
-    const cid = r.customer_id as string | null;
-    if (!cid) continue;
+  const bump = (cid: string | null, amount: number, date: string | null) => {
+    if (!cid) return;
     if (!map[cid]) map[cid] = { total_spent: 0, last_purchase: null, sales_count: 0 };
-    map[cid].total_spent += Number(r.total_amount ?? 0);
+    map[cid].total_spent += amount;
     map[cid].sales_count += 1;
-    if (!map[cid].last_purchase || (r.sale_date && r.sale_date > map[cid].last_purchase!)) {
-      map[cid].last_purchase = r.sale_date;
+    if (date && (!map[cid].last_purchase || date > map[cid].last_purchase!)) {
+      map[cid].last_purchase = date;
     }
+  };
+  for (const r of sales ?? []) {
+    bump(r.customer_id as string | null, Number(r.total_amount ?? 0), r.sale_date);
+  }
+  for (const r of entries ?? []) {
+    if (r.sale_id) continue; // already counted via sales
+    bump(r.customer_id as string | null, Number(r.amount ?? 0), r.reference_date);
   }
   return map;
+}
+
+/** Top customers by revenue (sales + service revenue). */
+export async function getTopCustomersByRevenue(limit = 10) {
+  const { data: customers, error } = await supabase
+    .from("customers")
+    .select("id, name, person_type")
+    .is("deleted_at", null);
+  if (error) throw error;
+  const ids = (customers ?? []).map((c) => c.id);
+  const m = await getCustomersMetricsMap(ids);
+  return (customers ?? [])
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      person_type: c.person_type,
+      total_spent: m[c.id]?.total_spent ?? 0,
+      sales_count: m[c.id]?.sales_count ?? 0,
+      last_purchase: m[c.id]?.last_purchase ?? null,
+    }))
+    .filter((c) => c.total_spent > 0)
+    .sort((a, b) => b.total_spent - a.total_spent)
+    .slice(0, limit);
 }

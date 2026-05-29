@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { FormModal, FieldGroupLabel } from "@/components/ui/form-modal";
 import { createEntry, listFinancialCategories, VENDA_DE_PRODUTO_CATEGORY_ID, type SaleItemInput } from "@/lib/data/financial";
 import { listProducts } from "@/lib/data/products";
+import { listCustomers } from "@/lib/data/customers";
 import { toISODate, formatBRL } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/integrations/supabase/types";
@@ -32,6 +33,7 @@ export function EntryForm({ trigger, defaultType }: { trigger: React.ReactNode; 
   const [specialPrice, setSpecialPrice] = useState(false);
   const [discountMode, setDiscountMode] = useState<"percent" | "amount">("percent");
   const [discountValue, setDiscountValue] = useState("0");
+  const [customerId, setCustomerId] = useState<string>("");
   const qc = useQueryClient();
 
   const { data: cats = [] } = useQuery({
@@ -49,6 +51,13 @@ export function EntryForm({ trigger, defaultType }: { trigger: React.ReactNode; 
   });
   const products = prodPage?.data ?? [];
   const productById = (id: string) => products.find((p: any) => p.id === id);
+
+  const { data: custPage } = useQuery({
+    queryKey: ["customers-for-entry"],
+    queryFn: () => listCustomers({ pageSize: 500 }),
+    enabled: type === "revenue",
+  });
+  const customers = custPage?.data ?? [];
 
   const subtotal = items.reduce((s, it) => {
     const p: any = productById(it.product_id);
@@ -95,6 +104,7 @@ export function EntryForm({ trigger, defaultType }: { trigger: React.ReactNode; 
         recurrence: productsMode ? "one_time" : recurrence,
         items: saleItems,
         discount: productsMode ? discountAmount : 0,
+        customer_id: type === "revenue" && customerId ? customerId : null,
       });
     },
     onSuccess: () => {
@@ -102,9 +112,13 @@ export function EntryForm({ trigger, defaultType }: { trigger: React.ReactNode; 
       qc.invalidateQueries({ queryKey: ["entries"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["product-sales-count"] });
+      qc.invalidateQueries({ queryKey: ["customers-metrics"] });
+      qc.invalidateQueries({ queryKey: ["customer-metrics"] });
+      qc.invalidateQueries({ queryKey: ["customer-sales"] });
+      qc.invalidateQueries({ queryKey: ["customers-top"] });
       setOpen(false);
       setAmount("0"); setDescription(""); setItems([]); setSpecialPrice(false);
-      setDiscountValue("0"); setDiscountMode("percent");
+      setDiscountValue("0"); setDiscountMode("percent"); setCustomerId("");
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
@@ -179,6 +193,22 @@ export function EntryForm({ trigger, defaultType }: { trigger: React.ReactNode; 
                     <SelectItem value="monthly">Mensal (12x)</SelectItem>
                     <SelectItem value="quarterly">Trimestral (12x)</SelectItem>
                     <SelectItem value="annual">Anual (12x)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {type === "revenue" && (
+              <div className="space-y-1.5">
+                <Label>Cliente (opcional)</Label>
+                <Select value={customerId || "__none"} onValueChange={(v) => setCustomerId(v === "__none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Sem cliente vinculado" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">Sem cliente vinculado</SelectItem>
+                    {customers.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

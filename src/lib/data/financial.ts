@@ -65,6 +65,7 @@ export type CreateEntryInput = {
   notes?: string | null;
   items?: SaleItemInput[];
   discount?: number;
+  customer_id?: string | null;
 };
 
 export async function createEntry(input: CreateEntryInput) {
@@ -84,6 +85,7 @@ export async function createEntry(input: CreateEntryInput) {
         total_cost: totalCost,
         discount,
         notes: input.description ?? null,
+        customer_id: input.customer_id ?? null,
       })
       .select()
       .single();
@@ -118,6 +120,7 @@ export async function createEntry(input: CreateEntryInput) {
     sale_id: i === 0 ? saleId : null,
     notes: input.notes ?? null,
     is_settled: false,
+    customer_id: input.customer_id ?? null,
   }));
   const { data, error } = await supabase.from("financial_entries").insert(rows).select();
   if (error) throw error;

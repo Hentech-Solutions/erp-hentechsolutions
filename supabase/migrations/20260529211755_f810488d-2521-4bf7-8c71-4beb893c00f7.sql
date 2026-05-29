@@ -1,0 +1,2 @@
+ALTER TABLE public.financial_entries ADD COLUMN IF NOT EXISTS customer_id uuid;
+CREATE INDEX IF NOT EXISTS idx_financial_entries_customer ON public.financial_entries(customer_id) WHERE customer_id IS NOT NULL;
