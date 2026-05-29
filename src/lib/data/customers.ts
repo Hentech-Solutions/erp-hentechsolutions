@@ -184,19 +184,3 @@ export async function getTopCustomersByRevenue(limit = 10) {
     .sort((a, b) => b.total_spent - a.total_spent)
     .slice(0, limit);
 }
-
-/** Stub kept for backward compatibility — original loop removed above. */
-function __unused_legacy_metrics_loop() {
-  const map: Record<string, { total_spent: number; last_purchase: string | null; sales_count: number }> = {};
-  for (const r of [] as Array<{ customer_id: string | null; total_amount: number | null; sale_date: string | null }>) {
-    const cid = r.customer_id as string | null;
-    if (!cid) continue;
-    if (!map[cid]) map[cid] = { total_spent: 0, last_purchase: null, sales_count: 0 };
-    map[cid].total_spent += Number(r.total_amount ?? 0);
-    map[cid].sales_count += 1;
-    if (!map[cid].last_purchase || (r.sale_date && r.sale_date > map[cid].last_purchase!)) {
-      map[cid].last_purchase = r.sale_date;
-    }
-  }
-  return map;
-}
