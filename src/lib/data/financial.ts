@@ -120,6 +120,7 @@ export async function createEntry(input: CreateEntryInput) {
     sale_id: i === 0 ? saleId : null,
     notes: input.notes ?? null,
     is_settled: false,
+    customer_id: input.customer_id ?? null,
   }));
   const { data, error } = await supabase.from("financial_entries").insert(rows).select();
   if (error) throw error;
