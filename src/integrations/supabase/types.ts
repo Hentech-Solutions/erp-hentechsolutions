@@ -156,6 +156,7 @@ export type Database = {
           cash_flow_cat: Database["public"]["Enums"]["cash_flow_category"]
           category_id: string | null
           created_at: string
+          customer_id: string | null
           deleted_at: string | null
           description: string | null
           exported_at: string | null
@@ -178,6 +179,7 @@ export type Database = {
           cash_flow_cat?: Database["public"]["Enums"]["cash_flow_category"]
           category_id?: string | null
           created_at?: string
+          customer_id?: string | null
           deleted_at?: string | null
           description?: string | null
           exported_at?: string | null
@@ -200,6 +202,7 @@ export type Database = {
           cash_flow_cat?: Database["public"]["Enums"]["cash_flow_category"]
           category_id?: string | null
           created_at?: string
+          customer_id?: string | null
           deleted_at?: string | null
           description?: string | null
           exported_at?: string | null
