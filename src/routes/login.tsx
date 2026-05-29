@@ -57,12 +57,8 @@ function LoginPage() {
           </p>
         </div>
         <div className="rounded-xl border border-border bg-card p-6 shadow-xl">
-          <h1 className="text-lg font-semibold tracking-tight">
-            {mode === "signin" ? "Entrar no ERP" : "Criar conta"}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {mode === "signin" ? "Acesse com seu email e senha." : "Cadastre-se para acessar o sistema."}
-          </p>
+          <h1 className="text-lg font-semibold tracking-tight">Entrar no ERP</h1>
+          <p className="text-sm text-muted-foreground mt-1">Acesse com seu email e senha.</p>
           <form onSubmit={handleSubmit} className="mt-5 space-y-4">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground" htmlFor="email">Email</label>
@@ -83,7 +79,7 @@ function LoginPage() {
                 type="password"
                 required
                 minLength={6}
-                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
@@ -94,16 +90,9 @@ function LoginPage() {
               disabled={loading}
               className="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60 transition"
             >
-              {loading ? "Aguarde..." : mode === "signin" ? "Entrar" : "Criar conta"}
+              {loading ? "Aguarde..." : "Entrar"}
             </button>
           </form>
-          <button
-            type="button"
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="mt-4 w-full text-xs text-muted-foreground hover:text-foreground transition"
-          >
-            {mode === "signin" ? "Não tem conta? Cadastre-se" : "Já tem conta? Entrar"}
-          </button>
         </div>
         <p className="mt-6 text-center text-[10px] tracking-[0.2em] uppercase text-muted-foreground/60">
           Hentech ERP · v1.0
