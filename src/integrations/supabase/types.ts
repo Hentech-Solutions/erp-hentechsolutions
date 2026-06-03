@@ -243,6 +243,45 @@ export type Database = {
           },
         ]
       }
+      financial_statements: {
+        Row: {
+          created_at: string
+          end_date: string
+          file_path: string
+          file_url: string
+          generated_by: string | null
+          generated_by_email: string | null
+          id: string
+          period_type: Database["public"]["Enums"]["statement_period_type"]
+          start_date: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          file_path: string
+          file_url: string
+          generated_by?: string | null
+          generated_by_email?: string | null
+          id?: string
+          period_type: Database["public"]["Enums"]["statement_period_type"]
+          start_date: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          file_path?: string
+          file_url?: string
+          generated_by?: string | null
+          generated_by_email?: string | null
+          id?: string
+          period_type?: Database["public"]["Enums"]["statement_period_type"]
+          start_date?: string
+          title?: string
+        }
+        Relationships: []
+      }
       integration_configs: {
         Row: {
           config: Json
@@ -573,6 +612,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       v_monthly_summary: {
@@ -605,10 +665,25 @@ export type Database = {
       }
     }
     Functions: {
+      has_any_role: {
+        Args: {
+          _roles: Database["public"]["Enums"]["app_role"][]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       recalc_goal_realized: { Args: { _goal_id: string }; Returns: undefined }
     }
     Enums: {
       alert_severity: "info" | "warning" | "critical"
+      app_role: "admin" | "manager" | "user"
       cash_flow_category: "operational" | "investment" | "financing"
       document_type: "cpf" | "cnpj"
       expense_recurrence: "one_time" | "monthly" | "quarterly" | "annual"
@@ -627,6 +702,7 @@ export type Database = {
         | "accounting"
       person_type: "individual" | "company"
       product_status: "active" | "inactive"
+      statement_period_type: "daily" | "weekly" | "monthly"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -755,6 +831,7 @@ export const Constants = {
   public: {
     Enums: {
       alert_severity: ["info", "warning", "critical"],
+      app_role: ["admin", "manager", "user"],
       cash_flow_category: ["operational", "investment", "financing"],
       document_type: ["cpf", "cnpj"],
       expense_recurrence: ["one_time", "monthly", "quarterly", "annual"],
@@ -775,6 +852,7 @@ export const Constants = {
       ],
       person_type: ["individual", "company"],
       product_status: ["active", "inactive"],
+      statement_period_type: ["daily", "weekly", "monthly"],
     },
   },
 } as const
