@@ -1,10 +1,11 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, Wallet, Package, Users, Target, LogOut } from "lucide-react";
+import { LayoutDashboard, Wallet, Package, Users, Target, LogOut, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import brandLogo from "@/assets/brand-logo.png";
 import brandWatermark from "@/assets/brand-watermark.png";
+import { useUserRole } from "@/hooks/use-user-role";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -17,6 +18,10 @@ const nav = [
 export function AppShell({ children, title }: { children: React.ReactNode; title?: string }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
+  const role = useUserRole();
+  const items = role.canAccessStatements
+    ? [...nav, { to: "/extratos", label: "Extratos", icon: FileText }]
+    : nav;
 
   async function handleLogout() {
     const { error } = await supabase.auth.signOut();
@@ -43,7 +48,7 @@ export function AppShell({ children, title }: { children: React.ReactNode; title
           </p>
         </div>
         <nav className="flex-1 p-3 space-y-1 relative">
-          {nav.map((n) => {
+          {items.map((n) => {
             const active = pathname === n.to;
             const Icon = n.icon;
             return (
