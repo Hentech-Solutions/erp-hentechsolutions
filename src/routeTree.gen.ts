@@ -17,6 +17,7 @@ import { Route as AuthenticatedMetasRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedFinanceiroRouteImport } from './routes/_authenticated/financeiro'
 import { Route as AuthenticatedExtratosRouteImport } from './routes/_authenticated/extratos'
 import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated/clientes'
+import { Route as ApiPublicOrdersRouteImport } from './routes/api/public/orders'
 import { Route as AuthenticatedClientesCustomerIdRouteImport } from './routes/_authenticated/clientes.$customerId'
 
 const LoginRoute = LoginRouteImport.update({
@@ -58,6 +59,11 @@ const AuthenticatedClientesRoute = AuthenticatedClientesRouteImport.update({
   path: '/clientes',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const ApiPublicOrdersRoute = ApiPublicOrdersRouteImport.update({
+  id: '/api/public/orders',
+  path: '/api/public/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedClientesCustomerIdRoute =
   AuthenticatedClientesCustomerIdRouteImport.update({
     id: '/$customerId',
@@ -74,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/metas': typeof AuthenticatedMetasRoute
   '/produtos': typeof AuthenticatedProdutosRoute
   '/clientes/$customerId': typeof AuthenticatedClientesCustomerIdRoute
+  '/api/public/orders': typeof ApiPublicOrdersRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/produtos': typeof AuthenticatedProdutosRoute
   '/': typeof AuthenticatedIndexRoute
   '/clientes/$customerId': typeof AuthenticatedClientesCustomerIdRoute
+  '/api/public/orders': typeof ApiPublicOrdersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/_authenticated/produtos': typeof AuthenticatedProdutosRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/clientes/$customerId': typeof AuthenticatedClientesCustomerIdRoute
+  '/api/public/orders': typeof ApiPublicOrdersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -108,6 +117,7 @@ export interface FileRouteTypes {
     | '/metas'
     | '/produtos'
     | '/clientes/$customerId'
+    | '/api/public/orders'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/produtos'
     | '/'
     | '/clientes/$customerId'
+    | '/api/public/orders'
   id:
     | '__root__'
     | '/_authenticated'
@@ -129,11 +140,13 @@ export interface FileRouteTypes {
     | '/_authenticated/produtos'
     | '/_authenticated/'
     | '/_authenticated/clientes/$customerId'
+    | '/api/public/orders'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
+  ApiPublicOrdersRoute: typeof ApiPublicOrdersRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -194,6 +207,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/api/public/orders': {
+      id: '/api/public/orders'
+      path: '/api/public/orders'
+      fullPath: '/api/public/orders'
+      preLoaderRoute: typeof ApiPublicOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/clientes/$customerId': {
       id: '/_authenticated/clientes/$customerId'
       path: '/$customerId'
@@ -242,6 +262,7 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
+  ApiPublicOrdersRoute: ApiPublicOrdersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

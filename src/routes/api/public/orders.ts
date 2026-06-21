@@ -94,7 +94,7 @@ export const Route = createFileRoute("/api/public/orders")({
             currency: p.summary.currency,
             notes: p.notes ?? null,
             status: "pendente",
-            raw_payload: p as unknown as Record<string, unknown>,
+            raw_payload: p as never,
           })
           .select("id, code, status")
           .single();
