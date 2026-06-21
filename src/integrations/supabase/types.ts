@@ -318,6 +318,90 @@ export type Database = {
         }
         Relationships: []
       }
+      orders: {
+        Row: {
+          add_discount_applied: boolean
+          add_quantity: number
+          add_saving: number
+          add_subtotal: number
+          add_unit_price: number
+          code: string
+          created_at: string
+          currency: string
+          customer_company: string | null
+          customer_email: string
+          customer_name: string
+          customer_role: string | null
+          customer_whatsapp: string
+          id: string
+          notes: string | null
+          notified_at: string | null
+          order_created_at: string
+          plan_id: string
+          plan_name: string
+          plan_price: number
+          raw_payload: Json
+          status: Database["public"]["Enums"]["order_status"]
+          status_changed_at: string | null
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          add_discount_applied?: boolean
+          add_quantity?: number
+          add_saving?: number
+          add_subtotal?: number
+          add_unit_price?: number
+          code: string
+          created_at?: string
+          currency?: string
+          customer_company?: string | null
+          customer_email: string
+          customer_name: string
+          customer_role?: string | null
+          customer_whatsapp: string
+          id?: string
+          notes?: string | null
+          notified_at?: string | null
+          order_created_at: string
+          plan_id: string
+          plan_name: string
+          plan_price: number
+          raw_payload: Json
+          status?: Database["public"]["Enums"]["order_status"]
+          status_changed_at?: string | null
+          total: number
+          updated_at?: string
+        }
+        Update: {
+          add_discount_applied?: boolean
+          add_quantity?: number
+          add_saving?: number
+          add_subtotal?: number
+          add_unit_price?: number
+          code?: string
+          created_at?: string
+          currency?: string
+          customer_company?: string | null
+          customer_email?: string
+          customer_name?: string
+          customer_role?: string | null
+          customer_whatsapp?: string
+          id?: string
+          notes?: string | null
+          notified_at?: string | null
+          order_created_at?: string
+          plan_id?: string
+          plan_name?: string
+          plan_price?: number
+          raw_payload?: Json
+          status?: Database["public"]["Enums"]["order_status"]
+          status_changed_at?: string | null
+          total?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       product_categories: {
         Row: {
           created_at: string
@@ -700,6 +784,7 @@ export type Database = {
         | "bank_api"
         | "sales_platform"
         | "accounting"
+      order_status: "pendente" | "em_execucao" | "concluido" | "cancelado"
       person_type: "individual" | "company"
       product_status: "active" | "inactive"
       statement_period_type: "daily" | "weekly" | "monthly"
@@ -850,6 +935,7 @@ export const Constants = {
         "sales_platform",
         "accounting",
       ],
+      order_status: ["pendente", "em_execucao", "concluido", "cancelado"],
       person_type: ["individual", "company"],
       product_status: ["active", "inactive"],
       statement_period_type: ["daily", "weekly", "monthly"],
