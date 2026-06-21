@@ -38,8 +38,11 @@ export async function listOrders(status?: OrderStatus | "all"): Promise<OrderRow
 }
 
 export async function updateOrderStatus(id: string, status: OrderStatus, opts?: { notified?: boolean }) {
-  const patch: Record<string, unknown> = { status, status_changed_at: new Date().toISOString() };
-  if (opts?.notified) patch.notified_at = new Date().toISOString();
+  const patch = {
+    status,
+    status_changed_at: new Date().toISOString(),
+    ...(opts?.notified ? { notified_at: new Date().toISOString() } : {}),
+  };
   const { error } = await supabase.from("orders").update(patch).eq("id", id);
   if (error) throw error;
 }
