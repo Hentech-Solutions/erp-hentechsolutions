@@ -18,6 +18,7 @@ import { Route as AuthenticatedMetasRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedFinanceiroRouteImport } from './routes/_authenticated/financeiro'
 import { Route as AuthenticatedExtratosRouteImport } from './routes/_authenticated/extratos'
 import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated/clientes'
+import { Route as AuthenticatedApiClientsRouteImport } from './routes/_authenticated/api-clients'
 import { Route as ApiPublicOrdersRouteImport } from './routes/api/public/orders'
 import { Route as AuthenticatedClientesCustomerIdRouteImport } from './routes/_authenticated/clientes.$customerId'
 
@@ -65,6 +66,11 @@ const AuthenticatedClientesRoute = AuthenticatedClientesRouteImport.update({
   path: '/clientes',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedApiClientsRoute = AuthenticatedApiClientsRouteImport.update({
+  id: '/api-clients',
+  path: '/api-clients',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const ApiPublicOrdersRoute = ApiPublicOrdersRouteImport.update({
   id: '/api/public/orders',
   path: '/api/public/orders',
@@ -80,6 +86,7 @@ const AuthenticatedClientesCustomerIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/login': typeof LoginRoute
+  '/api-clients': typeof AuthenticatedApiClientsRoute
   '/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/extratos': typeof AuthenticatedExtratosRoute
   '/financeiro': typeof AuthenticatedFinanceiroRoute
@@ -91,6 +98,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/api-clients': typeof AuthenticatedApiClientsRoute
   '/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/extratos': typeof AuthenticatedExtratosRoute
   '/financeiro': typeof AuthenticatedFinanceiroRoute
@@ -105,6 +113,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
+  '/_authenticated/api-clients': typeof AuthenticatedApiClientsRoute
   '/_authenticated/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/_authenticated/extratos': typeof AuthenticatedExtratosRoute
   '/_authenticated/financeiro': typeof AuthenticatedFinanceiroRoute
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/api-clients'
     | '/clientes'
     | '/extratos'
     | '/financeiro'
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
+    | '/api-clients'
     | '/clientes'
     | '/extratos'
     | '/financeiro'
@@ -144,6 +155,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/login'
+    | '/_authenticated/api-clients'
     | '/_authenticated/clientes'
     | '/_authenticated/extratos'
     | '/_authenticated/financeiro'
@@ -226,6 +238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/api-clients': {
+      id: '/_authenticated/api-clients'
+      path: '/api-clients'
+      fullPath: '/api-clients'
+      preLoaderRoute: typeof AuthenticatedApiClientsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/api/public/orders': {
       id: '/api/public/orders'
       path: '/api/public/orders'
@@ -257,6 +276,7 @@ const AuthenticatedClientesRouteWithChildren =
   )
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedApiClientsRoute: typeof AuthenticatedApiClientsRoute
   AuthenticatedClientesRoute: typeof AuthenticatedClientesRouteWithChildren
   AuthenticatedExtratosRoute: typeof AuthenticatedExtratosRoute
   AuthenticatedFinanceiroRoute: typeof AuthenticatedFinanceiroRoute
@@ -267,6 +287,7 @@ interface AuthenticatedRouteChildren {
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedApiClientsRoute: AuthenticatedApiClientsRoute,
   AuthenticatedClientesRoute: AuthenticatedClientesRouteWithChildren,
   AuthenticatedExtratosRoute: AuthenticatedExtratosRoute,
   AuthenticatedFinanceiroRoute: AuthenticatedFinanceiroRoute,
