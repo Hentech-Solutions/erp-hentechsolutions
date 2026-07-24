@@ -62,9 +62,24 @@ export const Route = createFileRoute("/api/public/orders")({
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: CORS }),
       POST: async ({ request }) => {
-        const apiKey = process.env.ORDERS_API_KEY;
-        if (!apiKey) return json({ error: "Server misconfigured" }, 500);
-        if (request.headers.get("x-api-key") !== apiKey) {
+        const provided = request.headers.get("x-api-key") ?? "";
+        if (!provided) return json({ error: "Unauthorized" }, 401);
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const providedHash = await sha256Hex(provided);
+        const legacyKey = process.env.ORDERS_API_KEY;
+        let clientId: string | null = null;
+        const { data: apiClient } = await supabaseAdmin
+          .from("api_clients")
+          .select("id, is_active, revoked_at")
+          .eq("key_hash", providedHash)
+          .maybeSingle();
+        if (apiClient && apiClient.is_active && !apiClient.revoked_at) {
+          clientId = apiClient.id;
+          await supabaseAdmin
+            .from("api_clients")
+            .update({ last_used_at: new Date().toISOString() })
+            .eq("id", apiClient.id);
+        } else if (!legacyKey || provided !== legacyKey) {
           return json({ error: "Unauthorized" }, 401);
         }
         let body: unknown;
@@ -78,7 +93,6 @@ export const Route = createFileRoute("/api/public/orders")({
           return json({ error: "Validation failed", issues: parsed.error.issues }, 400);
         }
         const p = parsed.data;
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data, error } = await supabaseAdmin
           .from("orders")
           .insert({
