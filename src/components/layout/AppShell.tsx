@@ -1,5 +1,5 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, Wallet, Package, Users, Target, LogOut, FileText, ShoppingBag } from "lucide-react";
+import { LayoutDashboard, Wallet, Package, Users, Target, LogOut, FileText, ShoppingBag, KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -20,9 +20,11 @@ export function AppShell({ children, title }: { children: React.ReactNode; title
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const role = useUserRole();
-  const items = role.canAccessStatements
-    ? [...nav, { to: "/extratos", label: "Extratos", icon: FileText }]
-    : nav;
+  const items = [
+    ...nav,
+    ...(role.canAccessStatements ? [{ to: "/extratos", label: "Extratos", icon: FileText }] : []),
+    ...(role.isAdmin ? [{ to: "/api-clients", label: "Clientes de API", icon: KeyRound }] : []),
+  ];
 
   async function handleLogout() {
     const { error } = await supabase.auth.signOut();
