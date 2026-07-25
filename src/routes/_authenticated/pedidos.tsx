@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageCircle, Play, CheckCircle2, XCircle, Trash2, Inbox, RotateCcw } from "lucide-react";
+import { MessageCircle, Play, CheckCircle2, XCircle, Trash2, Inbox, RotateCcw, LayoutGrid, List, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
@@ -37,8 +37,17 @@ const STATUS_STYLE: Record<OrderStatus, string> = {
   cancelado: "bg-rose-500/15 text-rose-400 border-rose-500/30",
 };
 
+const KANBAN_COLUMNS: { status: OrderStatus; accent: string }[] = [
+  { status: "pendente", accent: "border-t-amber-500/60" },
+  { status: "em_execucao", accent: "border-t-blue-500/60" },
+  { status: "concluido", accent: "border-t-emerald-500/60" },
+  { status: "cancelado", accent: "border-t-rose-500/60" },
+];
+
 function PedidosPage() {
   const [filter, setFilter] = useState<OrderStatus | "all">("all");
+  const [view, setView] = useState<"list" | "kanban">("list");
+  const [dragOverCol, setDragOverCol] = useState<OrderStatus | null>(null);
   const qc = useQueryClient();
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["orders", filter],
@@ -86,6 +95,27 @@ function PedidosPage() {
     }
   }
 
+  function onDragStart(e: React.DragEvent, o: OrderRow) {
+    e.dataTransfer.setData("text/plain", JSON.stringify({ id: o.id, from: o.status }));
+    e.dataTransfer.effectAllowed = "move";
+  }
+
+  async function onDropCol(e: React.DragEvent, status: OrderStatus) {
+    e.preventDefault();
+    setDragOverCol(null);
+    try {
+      const raw = e.dataTransfer.getData("text/plain");
+      if (!raw) return;
+      const { id, from } = JSON.parse(raw) as { id: string; from: OrderStatus };
+      if (from === status) return;
+      const o = orders.find((x) => x.id === id);
+      if (!o) return;
+      await changeStatus(o, status);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao mover pedido");
+    }
+  }
+
   return (
     <AppShell title="Pedidos">
       <div className="space-y-6">
@@ -96,25 +126,141 @@ function PedidosPage() {
               Pedidos recebidos via integração externa. Atualize o status e notifique o cliente.
             </p>
           </div>
-          <div className="flex flex-wrap gap-1.5 rounded-lg border border-border bg-card p-1">
-            {FILTERS.map((f) => (
+          <div className="flex flex-wrap items-center gap-2">
+            {view === "list" && (
+              <div className="flex flex-wrap gap-1.5 rounded-lg border border-border bg-card p-1">
+                {FILTERS.map((f) => (
+                  <button
+                    key={f.value}
+                    onClick={() => setFilter(f.value)}
+                    className={`px-3 py-1.5 text-xs rounded-md transition ${
+                      filter === f.value
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-1 rounded-lg border border-border bg-card p-1">
               <button
-                key={f.value}
-                onClick={() => setFilter(f.value)}
-                className={`px-3 py-1.5 text-xs rounded-md transition ${
-                  filter === f.value
+                onClick={() => setView("list")}
+                aria-pressed={view === "list"}
+                title="Visualização em lista"
+                className={`p-1.5 rounded-md transition ${
+                  view === "list"
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 }`}
               >
-                {f.label}
+                <List className="h-4 w-4" />
               </button>
-            ))}
+              <button
+                onClick={() => {
+                  setView("kanban");
+                  setFilter("all");
+                }}
+                aria-pressed={view === "kanban"}
+                title="Visualização em kanban"
+                className={`p-1.5 rounded-md transition ${
+                  view === "kanban"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                }`}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
 
         {isLoading ? (
           <div className="text-sm text-muted-foreground">Carregando...</div>
+        ) : view === "kanban" ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {KANBAN_COLUMNS.map((col) => {
+              const items = orders.filter((o) => o.status === col.status);
+              const isOver = dragOverCol === col.status;
+              return (
+                <div
+                  key={col.status}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    if (dragOverCol !== col.status) setDragOverCol(col.status);
+                  }}
+                  onDragLeave={(e) => {
+                    if (e.currentTarget === e.target) setDragOverCol(null);
+                  }}
+                  onDrop={(e) => onDropCol(e, col.status)}
+                  className={`flex flex-col rounded-xl border bg-card/40 border-t-4 ${col.accent} transition ${
+                    isOver ? "border-primary/60 bg-primary/5 ring-1 ring-primary/40" : "border-border"
+                  }`}
+                >
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className={STATUS_STYLE[col.status]}>
+                        {STATUS_LABEL[col.status]}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">{items.length}</span>
+                    </div>
+                  </div>
+                  <div className="p-3 space-y-3 min-h-[200px]">
+                    {items.length === 0 ? (
+                      <div className="text-xs text-muted-foreground/70 text-center py-8">
+                        Arraste um pedido aqui
+                      </div>
+                    ) : (
+                      items.map((o) => (
+                        <article
+                          key={o.id}
+                          draggable
+                          onDragStart={(e) => onDragStart(e, o)}
+                          className="group rounded-lg border border-border bg-card p-3 cursor-grab active:cursor-grabbing hover:border-primary/40 transition"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                              {o.code}
+                            </span>
+                            <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground" />
+                          </div>
+                          <h4 className="mt-2 text-sm font-semibold truncate">{o.customer_name}</h4>
+                          <p className="text-xs text-muted-foreground truncate">{o.plan_name}</p>
+                          <div className="mt-2 flex items-center justify-between">
+                            <span className="text-sm font-semibold tabular-nums">{formatBRL(o.total)}</span>
+                            <span className="text-[10px] text-muted-foreground">{formatDate(o.created_at)}</span>
+                          </div>
+                          <div className="mt-2 flex gap-1">
+                            <a
+                              href={chatUrl(o)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex-1"
+                            >
+                              <Button size="sm" variant="outline" className="w-full h-7 text-xs">
+                                <MessageCircle className="h-3 w-3" /> WhatsApp
+                              </Button>
+                            </a>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                              onClick={() => handleDelete(o)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </article>
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : orders.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-card/40 p-12 text-center">
             <Inbox className="mx-auto h-8 w-8 text-muted-foreground/60" />
