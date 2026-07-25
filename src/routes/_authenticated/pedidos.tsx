@@ -7,6 +7,15 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import {
   listOrders,
   updateOrderStatus,
   deleteOrder,
@@ -48,6 +57,9 @@ function PedidosPage() {
   const [filter, setFilter] = useState<OrderStatus | "all">("all");
   const [view, setView] = useState<"list" | "kanban">("list");
   const [dragOverCol, setDragOverCol] = useState<OrderStatus | null>(null);
+  const [execTarget, setExecTarget] = useState<OrderRow | null>(null);
+  const [execMsg, setExecMsg] = useState("");
+  const [execSubmitting, setExecSubmitting] = useState(false);
   const qc = useQueryClient();
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["orders", filter],
@@ -69,18 +81,37 @@ function PedidosPage() {
   }
 
   async function changeStatus(o: OrderRow, status: OrderStatus) {
+    if (status === "em_execucao") {
+      setExecTarget(o);
+      setExecMsg(execMessage(o));
+      return;
+    }
     try {
-      if (status === "em_execucao") {
-        window.open(buildWhatsappUrl(o.customer_whatsapp, execMessage(o)), "_blank", "noopener");
-        await updateOrderStatus(o.id, status, { notified: true });
-        toast.success("Pedido em execução. WhatsApp aberto para notificação.");
-      } else {
-        await updateOrderStatus(o.id, status);
-        toast.success(`Status atualizado para "${STATUS_LABEL[status]}".`);
-      }
+      await updateOrderStatus(o.id, status);
+      toast.success(`Status atualizado para "${STATUS_LABEL[status]}".`);
       qc.invalidateQueries({ queryKey: ["orders"] });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Erro ao atualizar pedido");
+    }
+  }
+
+  async function confirmExec() {
+    if (!execTarget) return;
+    setExecSubmitting(true);
+    try {
+      window.open(
+        buildWhatsappUrl(execTarget.customer_whatsapp, execMsg),
+        "_blank",
+        "noopener",
+      );
+      await updateOrderStatus(execTarget.id, "em_execucao", { notified: true });
+      toast.success("Pedido em execução. WhatsApp aberto para notificação.");
+      qc.invalidateQueries({ queryKey: ["orders"] });
+      setExecTarget(null);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Erro ao atualizar pedido");
+    } finally {
+      setExecSubmitting(false);
     }
   }
 
@@ -383,6 +414,50 @@ function PedidosPage() {
           </div>
         )}
       </div>
+
+      <Dialog open={!!execTarget} onOpenChange={(o) => !o && !execSubmitting && setExecTarget(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Notificar cliente no WhatsApp</DialogTitle>
+            <DialogDescription>
+              {execTarget && (
+                <>
+                  Ao confirmar, o pedido{" "}
+                  <span className="font-mono text-foreground">{execTarget.code}</span> será movido
+                  para <span className="text-foreground">Em execução</span> e o WhatsApp de{" "}
+                  <span className="text-foreground">{execTarget.customer_name}</span> será aberto
+                  com a mensagem abaixo.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-muted-foreground">Mensagem</label>
+            <Textarea
+              value={execMsg}
+              onChange={(e) => setExecMsg(e.target.value)}
+              rows={8}
+              className="font-mono text-xs"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Você pode editar a mensagem antes de enviar.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setExecTarget(null)}
+              disabled={execSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={confirmExec} disabled={execSubmitting || !execMsg.trim()}>
+              <MessageCircle className="h-3.5 w-3.5" />
+              {execSubmitting ? "Enviando..." : "Confirmar e abrir WhatsApp"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
