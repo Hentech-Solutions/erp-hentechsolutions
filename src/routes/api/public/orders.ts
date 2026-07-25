@@ -43,13 +43,17 @@ const payloadSchema = z.object({
     name: z.string().min(1).max(200),
     price: z.number().nonnegative(),
   }),
-  additionals: z.object({
-    quantity: z.number().int().nonnegative(),
-    unit_price: z.number().nonnegative(),
-    subtotal: z.number().nonnegative(),
-    discount_applied: z.boolean(),
-    saving: z.number().nonnegative(),
-  }),
+  additionals: z
+    .object({
+      quantity: z.number().int().nonnegative(),
+      unit_price: z.number().nonnegative(),
+      subtotal: z.number().nonnegative(),
+      discount_applied: z.boolean(),
+      saving: z.number().nonnegative(),
+    })
+    .nullable()
+    .optional()
+    .transform((v) => v ?? { quantity: 0, unit_price: 0, subtotal: 0, discount_applied: false, saving: 0 }),
   summary: z.object({
     total: z.number().nonnegative(),
     currency: z.string().min(3).max(8),
