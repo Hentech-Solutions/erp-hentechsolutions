@@ -33,31 +33,39 @@ export const Route = createFileRoute("/_authenticated/pedidos")({
 
 const FILTERS: { value: OrderStatus | "all"; label: string }[] = [
   { value: "all", label: "Todos" },
-  { value: "pendente", label: "Pendentes" },
+  { value: "pendente", label: "Entrada" },
+  { value: "em_negociacao", label: "Em negociação" },
   { value: "em_execucao", label: "Em execução" },
+  { value: "pronto_entrega", label: "Pronto p/ entrega" },
   { value: "concluido", label: "Concluídos" },
   { value: "cancelado", label: "Cancelados" },
 ];
 
 const STATUS_STYLE: Record<OrderStatus, string> = {
   pendente: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+  em_negociacao: "bg-violet-500/15 text-violet-400 border-violet-500/30",
   em_execucao: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  pronto_entrega: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
   concluido: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
   cancelado: "bg-rose-500/15 text-rose-400 border-rose-500/30",
 };
 
 const KANBAN_COLUMNS: { status: OrderStatus; accent: string }[] = [
   { status: "pendente", accent: "border-t-amber-500/60" },
+  { status: "em_negociacao", accent: "border-t-violet-500/60" },
   { status: "em_execucao", accent: "border-t-blue-500/60" },
+  { status: "pronto_entrega", accent: "border-t-cyan-500/60" },
   { status: "concluido", accent: "border-t-emerald-500/60" },
   { status: "cancelado", accent: "border-t-rose-500/60" },
 ];
 
+const NOTIFY_STATUSES: OrderStatus[] = ["em_negociacao", "em_execucao", "pronto_entrega"];
+
 function PedidosPage() {
   const [filter, setFilter] = useState<OrderStatus | "all">("all");
-  const [view, setView] = useState<"list" | "kanban">("list");
+  const [view, setView] = useState<"list" | "kanban">("kanban");
   const [dragOverCol, setDragOverCol] = useState<OrderStatus | null>(null);
-  const [execTarget, setExecTarget] = useState<OrderRow | null>(null);
+  const [execTarget, setExecTarget] = useState<{ order: OrderRow; status: OrderStatus } | null>(null);
   const [execMsg, setExecMsg] = useState("");
   const [execSubmitting, setExecSubmitting] = useState(false);
   const qc = useQueryClient();
@@ -71,7 +79,33 @@ function PedidosPage() {
     return buildWhatsappUrl(o.customer_whatsapp, msg);
   }
 
-  function execMessage(o: OrderRow) {
+  function statusMessage(o: OrderRow, status: OrderStatus) {
+    const adicionais =
+      o.add_quantity > 0
+        ? `\nAdicionais: ${o.add_quantity} × ${formatBRL(o.add_unit_price)} = ${formatBRL(o.add_subtotal)}`
+        : "";
+    if (status === "em_negociacao") {
+      return (
+        `Olá ${o.customer_name}! Tudo bem? 👋\n\n` +
+        `Aqui é da Hentech Solutions. Recebemos o seu pedido *${o.code}* e passo as informações para confirmarmos:\n\n` +
+        `• Plano: ${o.plan_name} — ${formatBRL(o.plan_price)}${adicionais}\n` +
+        `• Valor total: *${formatBRL(o.total)}*\n\n` +
+        `A forma de pagamento é via *PIX*.\n\n` +
+        `Podemos seguir com a negociação e iniciar os processos?`
+      );
+    }
+    if (status === "pronto_entrega") {
+      return (
+        `Olá ${o.customer_name}! ✅\n\n` +
+        `Seu pedido *${o.code}* (${o.plan_name}) está *pronto*!\n\n` +
+        `Qual a melhor forma para realizarmos a entrega?\n` +
+        `1️⃣ Retirar em local combinado\n` +
+        `2️⃣ Entrega pelos Correios (+ taxas)\n` +
+        `3️⃣ Uber Flash\n` +
+        `4️⃣ 99 Entregas\n\n` +
+        `Nos diga a opção preferida que já organizamos tudo.`
+      );
+    }
     return (
       `Olá ${o.customer_name}! 🎉\n\n` +
       `Seu pedido *${o.code}* (plano *${o.plan_name}*) entrou em execução.\n` +
@@ -81,9 +115,9 @@ function PedidosPage() {
   }
 
   async function changeStatus(o: OrderRow, status: OrderStatus) {
-    if (status === "em_execucao") {
-      setExecTarget(o);
-      setExecMsg(execMessage(o));
+    if (NOTIFY_STATUSES.includes(status)) {
+      setExecTarget({ order: o, status });
+      setExecMsg(statusMessage(o, status));
       return;
     }
     try {
@@ -97,15 +131,16 @@ function PedidosPage() {
 
   async function confirmExec() {
     if (!execTarget) return;
+    const { order, status } = execTarget;
     setExecSubmitting(true);
     try {
       window.open(
-        buildWhatsappUrl(execTarget.customer_whatsapp, execMsg),
+        buildWhatsappUrl(order.customer_whatsapp, execMsg),
         "_blank",
         "noopener",
       );
-      await updateOrderStatus(execTarget.id, "em_execucao", { notified: true });
-      toast.success("Pedido em execução. WhatsApp aberto para notificação.");
+      await updateOrderStatus(order.id, status, { notified: true });
+      toast.success(`Pedido movido para "${STATUS_LABEL[status]}". WhatsApp aberto.`);
       qc.invalidateQueries({ queryKey: ["orders"] });
       setExecTarget(null);
     } catch (e: unknown) {
