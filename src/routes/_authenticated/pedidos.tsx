@@ -415,12 +415,22 @@ function PedidosPage() {
                       <MessageCircle className="h-3.5 w-3.5" /> Conversar no WhatsApp
                     </Button>
                   </a>
-                  {o.status !== "em_execucao" && o.status !== "concluido" && (
+                  {o.status === "pendente" && (
+                    <Button size="sm" variant="outline" onClick={() => changeStatus(o, "em_negociacao")}>
+                      <MessageCircle className="h-3.5 w-3.5" /> Em negociação & notificar
+                    </Button>
+                  )}
+                  {o.status !== "em_execucao" && o.status !== "concluido" && o.status !== "pronto_entrega" && (
                     <Button size="sm" onClick={() => changeStatus(o, "em_execucao")}>
                       <Play className="h-3.5 w-3.5" /> Em execução & notificar
                     </Button>
                   )}
                   {o.status === "em_execucao" && (
+                    <Button size="sm" variant="outline" onClick={() => changeStatus(o, "pronto_entrega")}>
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Pronto para entrega & notificar
+                    </Button>
+                  )}
+                  {(o.status === "em_execucao" || o.status === "pronto_entrega") && (
                     <Button
                       size="sm"
                       variant="outline"
