@@ -458,9 +458,9 @@ function PedidosPage() {
               {execTarget && (
                 <>
                   Ao confirmar, o pedido{" "}
-                  <span className="font-mono text-foreground">{execTarget.code}</span> será movido
-                  para <span className="text-foreground">Em execução</span> e o WhatsApp de{" "}
-                  <span className="text-foreground">{execTarget.customer_name}</span> será aberto
+                  <span className="font-mono text-foreground">{execTarget.order.code}</span> será movido
+                  para <span className="text-foreground">{STATUS_LABEL[execTarget.status]}</span> e o WhatsApp de{" "}
+                  <span className="text-foreground">{execTarget.order.customer_name}</span> será aberto
                   com a mensagem abaixo.
                 </>
               )}
