@@ -245,7 +245,7 @@ function PedidosPage() {
         {isLoading ? (
           <div className="text-sm text-muted-foreground">Carregando...</div>
         ) : view === "kanban" ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+          <div className="kanban-scroll flex gap-4 overflow-x-auto pb-2 h-[calc(100vh-16rem)] min-h-[420px] items-stretch">
             {KANBAN_COLUMNS.map((col) => {
               const items = orders.filter((o) => o.status === col.status);
               const colValue = items.reduce((s, o) => s + Number(o.total), 0);
@@ -262,11 +262,11 @@ function PedidosPage() {
                     if (e.currentTarget === e.target) setDragOverCol(null);
                   }}
                   onDrop={(e) => onDropCol(e, col.status)}
-                  className={`flex flex-col rounded-xl border bg-card/40 border-t-4 ${col.accent} transition ${
+                  className={`flex h-full w-[280px] shrink-0 flex-col overflow-hidden rounded-xl border bg-card/40 border-t-4 ${col.accent} transition ${
                     isOver ? "border-primary/60 bg-primary/5 ring-1 ring-primary/40" : "border-border"
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2 px-3 py-3 border-b border-border/60">
+                  <div className="flex shrink-0 items-center justify-between gap-2 px-3 py-3 border-b border-border/60">
                     <Badge variant="outline" className={`${STATUS_STYLE[col.status]} truncate`}>
                       {STATUS_LABEL[col.status]}
                     </Badge>
@@ -279,7 +279,7 @@ function PedidosPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="p-3 space-y-3 min-h-[200px]">
+                  <div className="kanban-scroll flex-1 overflow-y-auto p-3 space-y-3">
                     {items.length === 0 ? (
                       <div className="text-xs text-muted-foreground/70 text-center py-8">
                         Arraste um pedido aqui
