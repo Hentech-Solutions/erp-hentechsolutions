@@ -1,6 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type OrderStatus = "pendente" | "em_execucao" | "concluido" | "cancelado";
+export type OrderStatus =
+  | "pendente"
+  | "em_negociacao"
+  | "em_execucao"
+  | "pronto_entrega"
+  | "concluido"
+  | "cancelado";
 
 export interface OrderRow {
   id: string;
@@ -37,6 +43,45 @@ export async function listOrders(status?: OrderStatus | "all"): Promise<OrderRow
   return (data ?? []) as unknown as OrderRow[];
 }
 
+export interface OrdersStats {
+  total: number;
+  totalValue: number;
+  ticket: number;
+  byStatus: { status: OrderStatus; count: number; value: number }[];
+  conversion: number;
+}
+
+export const ORDER_STATUSES: OrderStatus[] = [
+  "pendente",
+  "em_negociacao",
+  "em_execucao",
+  "pronto_entrega",
+  "concluido",
+  "cancelado",
+];
+
+export async function getOrdersStats(): Promise<OrdersStats> {
+  const rows = await listOrders("all");
+  const total = rows.length;
+  const totalValue = rows.reduce((s, r) => s + Number(r.total), 0);
+  const byStatus = ORDER_STATUSES.map((status) => {
+    const items = rows.filter((r) => r.status === status);
+    return {
+      status,
+      count: items.length,
+      value: items.reduce((s, r) => s + Number(r.total), 0),
+    };
+  });
+  const done = byStatus.find((b) => b.status === "concluido")?.count ?? 0;
+  return {
+    total,
+    totalValue,
+    ticket: total > 0 ? totalValue / total : 0,
+    byStatus,
+    conversion: total > 0 ? (done / total) * 100 : 0,
+  };
+}
+
 export async function updateOrderStatus(id: string, status: OrderStatus, opts?: { notified?: boolean }) {
   const patch = {
     status,
@@ -67,8 +112,10 @@ export function buildWhatsappUrl(phone: string, message: string): string {
 }
 
 export const STATUS_LABEL: Record<OrderStatus, string> = {
-  pendente: "Pendente",
+  pendente: "Entrada",
+  em_negociacao: "Em negociação",
   em_execucao: "Em execução",
+  pronto_entrega: "Pronto para entrega",
   concluido: "Concluído",
   cancelado: "Cancelado",
 };
