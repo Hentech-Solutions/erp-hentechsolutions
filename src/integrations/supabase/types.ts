@@ -823,7 +823,13 @@ export type Database = {
         | "bank_api"
         | "sales_platform"
         | "accounting"
-      order_status: "pendente" | "em_execucao" | "concluido" | "cancelado"
+      order_status:
+        | "pendente"
+        | "em_negociacao"
+        | "em_execucao"
+        | "pronto_entrega"
+        | "concluido"
+        | "cancelado"
       person_type: "individual" | "company"
       product_status: "active" | "inactive"
       statement_period_type: "daily" | "weekly" | "monthly"
@@ -974,7 +980,14 @@ export const Constants = {
         "sales_platform",
         "accounting",
       ],
-      order_status: ["pendente", "em_execucao", "concluido", "cancelado"],
+      order_status: [
+        "pendente",
+        "em_negociacao",
+        "em_execucao",
+        "pronto_entrega",
+        "concluido",
+        "cancelado",
+      ],
       person_type: ["individual", "company"],
       product_status: ["active", "inactive"],
       statement_period_type: ["daily", "weekly", "monthly"],
