@@ -9,6 +9,7 @@ import { CashFlowChart } from "@/components/dashboard/CashFlowChart";
 import { ExpenseDonut } from "@/components/dashboard/ExpenseDonut";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
 import { GoalsSection } from "@/components/dashboard/GoalsSection";
+import { OrdersSection } from "@/components/dashboard/OrdersSection";
 import { last12Months, type Period } from "@/lib/periods";
 import { getKpis, getRevenueSeries, getCashFlowSeries, getExpenseBreakdown, getAlerts } from "@/lib/data/dashboard";
 import { formatBRL, formatPercentPlain } from "@/lib/formatters";
@@ -54,6 +55,8 @@ function Dashboard() {
         </div>
 
         <GoalsSection />
+
+        <OrdersSection />
       </div>
     </AppShell>
   );
