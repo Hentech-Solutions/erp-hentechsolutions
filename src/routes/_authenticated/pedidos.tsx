@@ -245,9 +245,10 @@ function PedidosPage() {
         {isLoading ? (
           <div className="text-sm text-muted-foreground">Carregando...</div>
         ) : view === "kanban" ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
             {KANBAN_COLUMNS.map((col) => {
               const items = orders.filter((o) => o.status === col.status);
+              const colValue = items.reduce((s, o) => s + Number(o.total), 0);
               const isOver = dragOverCol === col.status;
               return (
                 <div
@@ -265,12 +266,17 @@ function PedidosPage() {
                     isOver ? "border-primary/60 bg-primary/5 ring-1 ring-primary/40" : "border-border"
                   }`}
                 >
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className={STATUS_STYLE[col.status]}>
-                        {STATUS_LABEL[col.status]}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">{items.length}</span>
+                  <div className="flex items-center justify-between gap-2 px-3 py-3 border-b border-border/60">
+                    <Badge variant="outline" className={`${STATUS_STYLE[col.status]} truncate`}>
+                      {STATUS_LABEL[col.status]}
+                    </Badge>
+                    <div className="text-right shrink-0">
+                      <div className="text-[11px] font-semibold tabular-nums">
+                        {items.length} {items.length === 1 ? "pedido" : "pedidos"}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground tabular-nums">
+                        {formatBRL(colValue)}
+                      </div>
                     </div>
                   </div>
                   <div className="p-3 space-y-3 min-h-[200px]">
