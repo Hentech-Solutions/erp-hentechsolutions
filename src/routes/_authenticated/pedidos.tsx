@@ -532,6 +532,96 @@ function PedidosPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[85vh] overflow-y-auto kanban-scroll">
+          {detail && (
+            <>
+              <DialogHeader>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                    {detail.code}
+                  </span>
+                  <Badge variant="outline" className={STATUS_STYLE[detail.status]}>
+                    {STATUS_LABEL[detail.status]}
+                  </Badge>
+                </div>
+                <DialogTitle className="text-left text-xl">{detail.customer_name}</DialogTitle>
+                <DialogDescription className="text-left">
+                  Recebido em {formatDate(detail.created_at)}
+                  {detail.customer_company ? ` · ${detail.customer_company}` : ""}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="rounded-xl border border-border bg-card/60 p-4 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Valor total</div>
+                  <div className="text-2xl sm:text-3xl font-semibold tabular-nums">{formatBRL(detail.total)}</div>
+                </div>
+                <span className="text-[11px] text-muted-foreground">{detail.currency}</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="E-mail">{detail.customer_email}</Field>
+                <Field label="WhatsApp">{detail.customer_whatsapp}</Field>
+                {detail.customer_role && <Field label="Cargo">{detail.customer_role}</Field>}
+                <Field label="Plano">
+                  <span className="font-medium">{detail.plan_name}</span>{" "}
+                  <span className="text-muted-foreground">— {formatBRL(detail.plan_price)}</span>
+                </Field>
+                <Field label="Adicionais">
+                  {detail.add_quantity > 0 ? (
+                    <>
+                      {detail.add_quantity} × {formatBRL(detail.add_unit_price)} ={" "}
+                      <span className="font-medium">{formatBRL(detail.add_subtotal)}</span>
+                      {detail.add_discount_applied && (
+                        <span className="ml-2 text-emerald-400 text-xs">
+                          -{formatBRL(detail.add_saving)} desconto
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">Sem adicionais</span>
+                  )}
+                </Field>
+                {detail.notes && (
+                  <div className="sm:col-span-2">
+                    <Field label="Observações">
+                      <p className="text-muted-foreground whitespace-pre-wrap">{detail.notes}</p>
+                    </Field>
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <a
+                  href={chatUrl(detail)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto"
+                >
+                  <Button variant="outline" size="sm" className="w-full">
+                    <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                  </Button>
+                </a>
+                {detail.status !== "concluido" && detail.status !== "cancelado" && (
+                  <Button
+                    size="sm"
+                    className="w-full sm:w-auto"
+                    onClick={() => {
+                      const o = detail;
+                      setDetail(null);
+                      changeStatus(o, "concluido");
+                    }}
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Concluir e lançar venda
+                  </Button>
+                )}
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
