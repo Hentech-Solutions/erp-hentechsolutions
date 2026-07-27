@@ -256,7 +256,7 @@ function PedidosPage() {
         {isLoading ? (
           <div className="text-sm text-muted-foreground">Carregando...</div>
         ) : view === "kanban" ? (
-          <div className="kanban-scroll flex gap-4 overflow-x-auto pb-2 h-[calc(100vh-16rem)] min-h-[420px] items-stretch">
+          <div className="kanban-scroll flex gap-3 sm:gap-4 overflow-x-auto pb-2 h-[calc(100vh-18rem)] min-h-[440px] items-stretch">
             {KANBAN_COLUMNS.map((col) => {
               const items = orders.filter((o) => o.status === col.status);
               const colValue = items.reduce((s, o) => s + Number(o.total), 0);
@@ -273,7 +273,7 @@ function PedidosPage() {
                     if (e.currentTarget === e.target) setDragOverCol(null);
                   }}
                   onDrop={(e) => onDropCol(e, col.status)}
-                  className={`flex h-full w-[280px] shrink-0 flex-col overflow-hidden rounded-xl border bg-card/40 border-t-4 ${col.accent} transition ${
+                  className={`flex h-full w-[76vw] max-w-[300px] sm:w-[280px] shrink-0 flex-col overflow-hidden rounded-xl border bg-card/40 border-t-4 ${col.accent} transition ${
                     isOver ? "border-primary/60 bg-primary/5 ring-1 ring-primary/40" : "border-border"
                   }`}
                 >
@@ -301,7 +301,16 @@ function PedidosPage() {
                           key={o.id}
                           draggable
                           onDragStart={(e) => onDragStart(e, o)}
-                          className="group rounded-lg border border-border bg-card p-3 cursor-grab active:cursor-grabbing hover:border-primary/40 transition"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setDetail(o)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              setDetail(o);
+                            }
+                          }}
+                          className="group rounded-lg border border-border bg-card p-3 cursor-pointer hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 transition"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
@@ -331,7 +340,10 @@ function PedidosPage() {
                               size="sm"
                               variant="ghost"
                               className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleDelete(o)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(o);
+                              }}
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
