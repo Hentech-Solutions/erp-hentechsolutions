@@ -20,6 +20,7 @@ import {
   updateOrderStatus,
   deleteOrder,
   buildWhatsappUrl,
+  registerOrderSale,
   STATUS_LABEL,
   type OrderRow,
   type OrderStatus,
@@ -68,6 +69,7 @@ function PedidosPage() {
   const [execTarget, setExecTarget] = useState<{ order: OrderRow; status: OrderStatus } | null>(null);
   const [execMsg, setExecMsg] = useState("");
   const [execSubmitting, setExecSubmitting] = useState(false);
+  const [detail, setDetail] = useState<OrderRow | null>(null);
   const qc = useQueryClient();
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["orders", filter],
@@ -122,6 +124,15 @@ function PedidosPage() {
     }
     try {
       await updateOrderStatus(o.id, status);
+      if (status === "concluido") {
+        const res = await registerOrderSale(o);
+        if (res === "created") {
+          toast.success(`Venda de ${formatBRL(Number(o.total))} lançada no financeiro.`);
+        }
+        qc.invalidateQueries({ queryKey: ["entries"] });
+        qc.invalidateQueries({ queryKey: ["profit"] });
+        qc.invalidateQueries({ queryKey: ["dashboard"] });
+      }
       toast.success(`Status atualizado para "${STATUS_LABEL[status]}".`);
       qc.invalidateQueries({ queryKey: ["orders"] });
     } catch (e: unknown) {
