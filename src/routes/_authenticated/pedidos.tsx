@@ -535,3 +535,12 @@ function PedidosPage() {
     </AppShell>
   );
 }
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{label}</div>
+      <div className="text-sm break-words">{children}</div>
+    </div>
+  );
+}
