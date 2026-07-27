@@ -132,6 +132,7 @@ export function ProductTable() {
             ))}
           </tbody>
         </table>
+</div>
       </div>
 
       {data && data.total > data.pageSize && (

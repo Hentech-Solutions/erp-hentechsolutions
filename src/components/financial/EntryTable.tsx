@@ -98,6 +98,7 @@ export function EntryTable({ type, from, to }: { type?: EntryType | "all"; from?
           </tfoot>
         )}
       </table>
+</div>
       {data && data.total > data.pageSize && (
         <div className="flex items-center justify-between text-xs text-muted-foreground px-4 py-3 border-t border-border">
           <span>{data.total} lançamentos · página {page}</span>

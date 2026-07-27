@@ -156,6 +156,7 @@ export function CustomerTable() {
             })}
           </tbody>
         </table>
+</div>
       </div>
 
       {data && data.total > data.pageSize && (
