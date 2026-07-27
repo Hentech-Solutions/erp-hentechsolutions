@@ -39,7 +39,8 @@ export function EntryTable({ type, from, to }: { type?: EntryType | "all"; from?
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <table className="w-full text-sm">
+<div className="kanban-scroll overflow-x-auto">
+      <table className="w-full min-w-[720px] text-sm">
         <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
           <tr>
             <th className="text-left px-4 py-3">Data</th>
@@ -97,6 +98,7 @@ export function EntryTable({ type, from, to }: { type?: EntryType | "all"; from?
           </tfoot>
         )}
       </table>
+</div>
       {data && data.total > data.pageSize && (
         <div className="flex items-center justify-between text-xs text-muted-foreground px-4 py-3 border-t border-border">
           <span>{data.total} lançamentos · página {page}</span>

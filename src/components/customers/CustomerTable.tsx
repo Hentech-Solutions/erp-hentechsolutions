@@ -75,7 +75,8 @@ export function CustomerTable() {
       </div>
 
       <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <table className="w-full text-sm">
+<div className="kanban-scroll overflow-x-auto">
+        <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="text-left px-4 py-3">Nome</th>
@@ -155,6 +156,7 @@ export function CustomerTable() {
             })}
           </tbody>
         </table>
+</div>
       </div>
 
       {data && data.total > data.pageSize && (

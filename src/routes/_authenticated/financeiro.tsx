@@ -37,7 +37,7 @@ function FinancePage() {
         </div>
 
         <Tabs defaultValue="all">
-          <TabsList>
+          <TabsList className="kanban-scroll w-full justify-start overflow-x-auto">
             <TabsTrigger value="all">Histórico</TabsTrigger>
             <TabsTrigger value="revenue">Faturamento</TabsTrigger>
             <TabsTrigger value="expense">Despesas</TabsTrigger>

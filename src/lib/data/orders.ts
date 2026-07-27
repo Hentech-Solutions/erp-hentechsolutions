@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { VENDA_DE_PRODUTO_CATEGORY_ID } from "@/lib/data/financial";
 
 export type OrderStatus =
   | "pendente"
@@ -95,6 +96,56 @@ export async function updateOrderStatus(id: string, status: OrderStatus, opts?: 
 export async function deleteOrder(id: string) {
   const { error } = await supabase.from("orders").delete().eq("id", id);
   if (error) throw error;
+}
+
+/**
+ * Registers a completed order as a sale + revenue entry in the financial center.
+ * Idempotent: uses `order:<id>` as external_ref and skips if already registered.
+ */
+export async function registerOrderSale(order: OrderRow): Promise<"created" | "skipped"> {
+  const ref = `order:${order.id}`;
+  const { data: existing, error: exErr } = await supabase
+    .from("financial_entries")
+    .select("id")
+    .eq("external_ref", ref)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (exErr) throw exErr;
+  if (existing) return "skipped";
+
+  const saleDate = new Date().toISOString().slice(0, 10);
+  const total = Number(order.total);
+
+  const { data: sale, error: saleErr } = await supabase
+    .from("sales")
+    .insert({
+      sale_date: saleDate,
+      total_amount: total,
+      total_cost: 0,
+      discount: 0,
+      notes: `Pedido ${order.code} — ${order.plan_name} (${order.customer_name})`,
+      external_ref: ref,
+    })
+    .select("id")
+    .single();
+  if (saleErr) throw saleErr;
+
+  const { error: entryErr } = await supabase.from("financial_entries").insert({
+    type: "revenue",
+    amount: total,
+    category_id: VENDA_DE_PRODUTO_CATEGORY_ID,
+    reference_date: saleDate,
+    description: `Pedido ${order.code} — ${order.plan_name}`,
+    notes: `Cliente: ${order.customer_name}`,
+    recurrence: "one_time",
+    cash_flow_cat: "operational",
+    external_ref: ref,
+    sale_id: sale.id,
+    is_settled: true,
+    payment_date: saleDate,
+  });
+  if (entryErr) throw entryErr;
+  return "created";
 }
 
 /** Sanitize a Brazilian phone number to international E.164 digits for wa.me */

@@ -20,6 +20,7 @@ import {
   updateOrderStatus,
   deleteOrder,
   buildWhatsappUrl,
+  registerOrderSale,
   STATUS_LABEL,
   type OrderRow,
   type OrderStatus,
@@ -68,6 +69,7 @@ function PedidosPage() {
   const [execTarget, setExecTarget] = useState<{ order: OrderRow; status: OrderStatus } | null>(null);
   const [execMsg, setExecMsg] = useState("");
   const [execSubmitting, setExecSubmitting] = useState(false);
+  const [detail, setDetail] = useState<OrderRow | null>(null);
   const qc = useQueryClient();
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["orders", filter],
@@ -122,6 +124,15 @@ function PedidosPage() {
     }
     try {
       await updateOrderStatus(o.id, status);
+      if (status === "concluido") {
+        const res = await registerOrderSale(o);
+        if (res === "created") {
+          toast.success(`Venda de ${formatBRL(Number(o.total))} lançada no financeiro.`);
+        }
+        qc.invalidateQueries({ queryKey: ["entries"] });
+        qc.invalidateQueries({ queryKey: ["profit"] });
+        qc.invalidateQueries({ queryKey: ["dashboard"] });
+      }
       toast.success(`Status atualizado para "${STATUS_LABEL[status]}".`);
       qc.invalidateQueries({ queryKey: ["orders"] });
     } catch (e: unknown) {
@@ -245,7 +256,7 @@ function PedidosPage() {
         {isLoading ? (
           <div className="text-sm text-muted-foreground">Carregando...</div>
         ) : view === "kanban" ? (
-          <div className="kanban-scroll flex gap-4 overflow-x-auto pb-2 h-[calc(100vh-16rem)] min-h-[420px] items-stretch">
+          <div className="kanban-scroll flex gap-3 sm:gap-4 overflow-x-auto pb-2 h-[calc(100vh-18rem)] min-h-[440px] items-stretch">
             {KANBAN_COLUMNS.map((col) => {
               const items = orders.filter((o) => o.status === col.status);
               const colValue = items.reduce((s, o) => s + Number(o.total), 0);
@@ -262,7 +273,7 @@ function PedidosPage() {
                     if (e.currentTarget === e.target) setDragOverCol(null);
                   }}
                   onDrop={(e) => onDropCol(e, col.status)}
-                  className={`flex h-full w-[280px] shrink-0 flex-col overflow-hidden rounded-xl border bg-card/40 border-t-4 ${col.accent} transition ${
+                  className={`flex h-full w-[76vw] max-w-[300px] sm:w-[280px] shrink-0 flex-col overflow-hidden rounded-xl border bg-card/40 border-t-4 ${col.accent} transition ${
                     isOver ? "border-primary/60 bg-primary/5 ring-1 ring-primary/40" : "border-border"
                   }`}
                 >
@@ -290,7 +301,16 @@ function PedidosPage() {
                           key={o.id}
                           draggable
                           onDragStart={(e) => onDragStart(e, o)}
-                          className="group rounded-lg border border-border bg-card p-3 cursor-grab active:cursor-grabbing hover:border-primary/40 transition"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setDetail(o)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              setDetail(o);
+                            }
+                          }}
+                          className="group rounded-lg border border-border bg-card p-3 cursor-pointer hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 transition"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
@@ -320,7 +340,10 @@ function PedidosPage() {
                               size="sm"
                               variant="ghost"
                               className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleDelete(o)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(o);
+                              }}
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
@@ -509,6 +532,105 @@ function PedidosPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[85vh] overflow-y-auto kanban-scroll">
+          {detail && (
+            <>
+              <DialogHeader>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                    {detail.code}
+                  </span>
+                  <Badge variant="outline" className={STATUS_STYLE[detail.status]}>
+                    {STATUS_LABEL[detail.status]}
+                  </Badge>
+                </div>
+                <DialogTitle className="text-left text-xl">{detail.customer_name}</DialogTitle>
+                <DialogDescription className="text-left">
+                  Recebido em {formatDate(detail.created_at)}
+                  {detail.customer_company ? ` · ${detail.customer_company}` : ""}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="rounded-xl border border-border bg-card/60 p-4 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Valor total</div>
+                  <div className="text-2xl sm:text-3xl font-semibold tabular-nums">{formatBRL(detail.total)}</div>
+                </div>
+                <span className="text-[11px] text-muted-foreground">{detail.currency}</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="E-mail">{detail.customer_email}</Field>
+                <Field label="WhatsApp">{detail.customer_whatsapp}</Field>
+                {detail.customer_role && <Field label="Cargo">{detail.customer_role}</Field>}
+                <Field label="Plano">
+                  <span className="font-medium">{detail.plan_name}</span>{" "}
+                  <span className="text-muted-foreground">— {formatBRL(detail.plan_price)}</span>
+                </Field>
+                <Field label="Adicionais">
+                  {detail.add_quantity > 0 ? (
+                    <>
+                      {detail.add_quantity} × {formatBRL(detail.add_unit_price)} ={" "}
+                      <span className="font-medium">{formatBRL(detail.add_subtotal)}</span>
+                      {detail.add_discount_applied && (
+                        <span className="ml-2 text-emerald-400 text-xs">
+                          -{formatBRL(detail.add_saving)} desconto
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">Sem adicionais</span>
+                  )}
+                </Field>
+                {detail.notes && (
+                  <div className="sm:col-span-2">
+                    <Field label="Observações">
+                      <p className="text-muted-foreground whitespace-pre-wrap">{detail.notes}</p>
+                    </Field>
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <a
+                  href={chatUrl(detail)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto"
+                >
+                  <Button variant="outline" size="sm" className="w-full">
+                    <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                  </Button>
+                </a>
+                {detail.status !== "concluido" && detail.status !== "cancelado" && (
+                  <Button
+                    size="sm"
+                    className="w-full sm:w-auto"
+                    onClick={() => {
+                      const o = detail;
+                      setDetail(null);
+                      changeStatus(o, "concluido");
+                    }}
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Concluir e lançar venda
+                  </Button>
+                )}
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </AppShell>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{label}</div>
+      <div className="text-sm break-words">{children}</div>
+    </div>
   );
 }
