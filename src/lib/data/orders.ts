@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { VENDA_DE_PRODUTO_CATEGORY_ID } from "@/lib/data/financial";
+import { notifySaleCompleted } from "@/lib/telegram.functions";
 
 export type OrderStatus =
   | "pendente"
@@ -145,6 +146,11 @@ export async function registerOrderSale(order: OrderRow): Promise<"created" | "s
     payment_date: saleDate,
   });
   if (entryErr) throw entryErr;
+  try {
+    await notifySaleCompleted({ data: { amount: total } });
+  } catch (e) {
+    console.error("Telegram notification failed:", (e as Error).message);
+  }
   return "created";
 }
 
