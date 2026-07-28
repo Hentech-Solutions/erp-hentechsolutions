@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedProdutosRouteImport } from './routes/_authenticated/produtos'
 import { Route as AuthenticatedPedidosRouteImport } from './routes/_authenticated/pedidos'
+import { Route as AuthenticatedNotificacoesRouteImport } from './routes/_authenticated/notificacoes'
 import { Route as AuthenticatedMetasRouteImport } from './routes/_authenticated/metas'
 import { Route as AuthenticatedFinanceiroRouteImport } from './routes/_authenticated/financeiro'
 import { Route as AuthenticatedExtratosRouteImport } from './routes/_authenticated/extratos'
@@ -46,6 +47,12 @@ const AuthenticatedPedidosRoute = AuthenticatedPedidosRouteImport.update({
   path: '/pedidos',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedNotificacoesRoute =
+  AuthenticatedNotificacoesRouteImport.update({
+    id: '/notificacoes',
+    path: '/notificacoes',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedMetasRoute = AuthenticatedMetasRouteImport.update({
   id: '/metas',
   path: '/metas',
@@ -91,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/extratos': typeof AuthenticatedExtratosRoute
   '/financeiro': typeof AuthenticatedFinanceiroRoute
   '/metas': typeof AuthenticatedMetasRoute
+  '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/pedidos': typeof AuthenticatedPedidosRoute
   '/produtos': typeof AuthenticatedProdutosRoute
   '/clientes/$customerId': typeof AuthenticatedClientesCustomerIdRoute
@@ -103,6 +111,7 @@ export interface FileRoutesByTo {
   '/extratos': typeof AuthenticatedExtratosRoute
   '/financeiro': typeof AuthenticatedFinanceiroRoute
   '/metas': typeof AuthenticatedMetasRoute
+  '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/pedidos': typeof AuthenticatedPedidosRoute
   '/produtos': typeof AuthenticatedProdutosRoute
   '/': typeof AuthenticatedIndexRoute
@@ -118,6 +127,7 @@ export interface FileRoutesById {
   '/_authenticated/extratos': typeof AuthenticatedExtratosRoute
   '/_authenticated/financeiro': typeof AuthenticatedFinanceiroRoute
   '/_authenticated/metas': typeof AuthenticatedMetasRoute
+  '/_authenticated/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/_authenticated/pedidos': typeof AuthenticatedPedidosRoute
   '/_authenticated/produtos': typeof AuthenticatedProdutosRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -134,6 +144,7 @@ export interface FileRouteTypes {
     | '/extratos'
     | '/financeiro'
     | '/metas'
+    | '/notificacoes'
     | '/pedidos'
     | '/produtos'
     | '/clientes/$customerId'
@@ -146,6 +157,7 @@ export interface FileRouteTypes {
     | '/extratos'
     | '/financeiro'
     | '/metas'
+    | '/notificacoes'
     | '/pedidos'
     | '/produtos'
     | '/'
@@ -160,6 +172,7 @@ export interface FileRouteTypes {
     | '/_authenticated/extratos'
     | '/_authenticated/financeiro'
     | '/_authenticated/metas'
+    | '/_authenticated/notificacoes'
     | '/_authenticated/pedidos'
     | '/_authenticated/produtos'
     | '/_authenticated/'
@@ -208,6 +221,13 @@ declare module '@tanstack/react-router' {
       path: '/pedidos'
       fullPath: '/pedidos'
       preLoaderRoute: typeof AuthenticatedPedidosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/notificacoes': {
+      id: '/_authenticated/notificacoes'
+      path: '/notificacoes'
+      fullPath: '/notificacoes'
+      preLoaderRoute: typeof AuthenticatedNotificacoesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/metas': {
@@ -281,6 +301,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedExtratosRoute: typeof AuthenticatedExtratosRoute
   AuthenticatedFinanceiroRoute: typeof AuthenticatedFinanceiroRoute
   AuthenticatedMetasRoute: typeof AuthenticatedMetasRoute
+  AuthenticatedNotificacoesRoute: typeof AuthenticatedNotificacoesRoute
   AuthenticatedPedidosRoute: typeof AuthenticatedPedidosRoute
   AuthenticatedProdutosRoute: typeof AuthenticatedProdutosRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -292,6 +313,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedExtratosRoute: AuthenticatedExtratosRoute,
   AuthenticatedFinanceiroRoute: AuthenticatedFinanceiroRoute,
   AuthenticatedMetasRoute: AuthenticatedMetasRoute,
+  AuthenticatedNotificacoesRoute: AuthenticatedNotificacoesRoute,
   AuthenticatedPedidosRoute: AuthenticatedPedidosRoute,
   AuthenticatedProdutosRoute: AuthenticatedProdutosRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
