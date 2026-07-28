@@ -735,6 +735,39 @@ export type Database = {
           },
         ]
       }
+      telegram_recipients: {
+        Row: {
+          chat_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          notify_new_order: boolean
+          notify_sale: boolean
+          updated_at: string
+        }
+        Insert: {
+          chat_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          notify_new_order?: boolean
+          notify_sale?: boolean
+          updated_at?: string
+        }
+        Update: {
+          chat_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          notify_new_order?: boolean
+          notify_sale?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
