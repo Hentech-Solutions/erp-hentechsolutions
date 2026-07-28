@@ -1,6 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Wallet, Package, Users, Target, LogOut, FileText, ShoppingBag, KeyRound, Menu } from "lucide-react";
+import { LayoutDashboard, Wallet, Package, Users, Target, LogOut, FileText, ShoppingBag, KeyRound, Menu, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,7 +26,12 @@ export function AppShell({ children, title }: { children: React.ReactNode; title
   const items = [
     ...nav,
     ...(role.canAccessStatements ? [{ to: "/extratos", label: "Extratos", icon: FileText }] : []),
-    ...(role.isAdmin ? [{ to: "/api-clients", label: "Clientes de API", icon: KeyRound }] : []),
+    ...(role.isAdmin
+      ? [
+          { to: "/api-clients", label: "Clientes de API", icon: KeyRound },
+          { to: "/notificacoes", label: "Notificações", icon: Bell },
+        ]
+      : []),
   ];
 
   useEffect(() => {

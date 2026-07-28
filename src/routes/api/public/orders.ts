@@ -129,6 +129,12 @@ export const Route = createFileRoute("/api/public/orders")({
           }
           return json({ error: error.message }, 500);
         }
+        try {
+          const { notifyTelegram } = await import("@/lib/telegram.server");
+          await notifyTelegram("new_order", p.summary.total);
+        } catch (e) {
+          console.error("Telegram notification failed:", (e as Error).message);
+        }
         return json({ ok: true, order: data }, 201);
       },
     },
