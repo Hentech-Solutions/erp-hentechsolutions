@@ -9,27 +9,27 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedProdutosRouteImport } from './routes/_authenticated/produtos'
-import { Route as AuthenticatedPedidosRouteImport } from './routes/_authenticated/pedidos'
-import { Route as AuthenticatedNotificacoesRouteImport } from './routes/_authenticated/notificacoes'
-import { Route as AuthenticatedMetasRouteImport } from './routes/_authenticated/metas'
-import { Route as AuthenticatedFinanceiroRouteImport } from './routes/_authenticated/financeiro'
-import { Route as AuthenticatedExtratosRouteImport } from './routes/_authenticated/extratos'
-import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated/clientes'
 import { Route as AuthenticatedApiClientsRouteImport } from './routes/_authenticated/api-clients'
-import { Route as ApiPublicOrdersRouteImport } from './routes/api/public/orders'
+import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated/clientes'
+import { Route as AuthenticatedExtratosRouteImport } from './routes/_authenticated/extratos'
+import { Route as AuthenticatedFinanceiroRouteImport } from './routes/_authenticated/financeiro'
+import { Route as AuthenticatedMetasRouteImport } from './routes/_authenticated/metas'
+import { Route as AuthenticatedNotificacoesRouteImport } from './routes/_authenticated/notificacoes'
+import { Route as AuthenticatedPedidosRouteImport } from './routes/_authenticated/pedidos'
+import { Route as AuthenticatedProdutosRouteImport } from './routes/_authenticated/produtos'
 import { Route as AuthenticatedClientesCustomerIdRouteImport } from './routes/_authenticated/clientes.$customerId'
+import { Route as ApiPublicOrdersRouteImport } from './routes/api/public/orders'
 
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedRoute = AuthenticatedRouteImport.update({
-  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
@@ -37,14 +37,29 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedProdutosRoute = AuthenticatedProdutosRouteImport.update({
-  id: '/produtos',
-  path: '/produtos',
+const AuthenticatedApiClientsRoute = AuthenticatedApiClientsRouteImport.update({
+  id: '/api-clients',
+  path: '/api-clients',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedPedidosRoute = AuthenticatedPedidosRouteImport.update({
-  id: '/pedidos',
-  path: '/pedidos',
+const AuthenticatedClientesRoute = AuthenticatedClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedExtratosRoute = AuthenticatedExtratosRouteImport.update({
+  id: '/extratos',
+  path: '/extratos',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedFinanceiroRoute = AuthenticatedFinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedMetasRoute = AuthenticatedMetasRouteImport.update({
+  id: '/metas',
+  path: '/metas',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedNotificacoesRoute =
@@ -53,35 +68,15 @@ const AuthenticatedNotificacoesRoute =
     path: '/notificacoes',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedMetasRoute = AuthenticatedMetasRouteImport.update({
-  id: '/metas',
-  path: '/metas',
+const AuthenticatedPedidosRoute = AuthenticatedPedidosRouteImport.update({
+  id: '/pedidos',
+  path: '/pedidos',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedFinanceiroRoute = AuthenticatedFinanceiroRouteImport.update({
-  id: '/financeiro',
-  path: '/financeiro',
+const AuthenticatedProdutosRoute = AuthenticatedProdutosRouteImport.update({
+  id: '/produtos',
+  path: '/produtos',
   getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedExtratosRoute = AuthenticatedExtratosRouteImport.update({
-  id: '/extratos',
-  path: '/extratos',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedClientesRoute = AuthenticatedClientesRouteImport.update({
-  id: '/clientes',
-  path: '/clientes',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedApiClientsRoute = AuthenticatedApiClientsRouteImport.update({
-  id: '/api-clients',
-  path: '/api-clients',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const ApiPublicOrdersRoute = ApiPublicOrdersRouteImport.update({
-  id: '/api/public/orders',
-  path: '/api/public/orders',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedClientesCustomerIdRoute =
   AuthenticatedClientesCustomerIdRouteImport.update({
@@ -89,6 +84,11 @@ const AuthenticatedClientesCustomerIdRoute =
     path: '/$customerId',
     getParentRoute: () => AuthenticatedClientesRoute,
   } as any)
+const ApiPublicOrdersRoute = ApiPublicOrdersRouteImport.update({
+  id: '/api/public/orders',
+  path: '/api/public/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -188,18 +188,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/': {
@@ -209,46 +209,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/produtos': {
-      id: '/_authenticated/produtos'
-      path: '/produtos'
-      fullPath: '/produtos'
-      preLoaderRoute: typeof AuthenticatedProdutosRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/pedidos': {
-      id: '/_authenticated/pedidos'
-      path: '/pedidos'
-      fullPath: '/pedidos'
-      preLoaderRoute: typeof AuthenticatedPedidosRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/notificacoes': {
-      id: '/_authenticated/notificacoes'
-      path: '/notificacoes'
-      fullPath: '/notificacoes'
-      preLoaderRoute: typeof AuthenticatedNotificacoesRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/metas': {
-      id: '/_authenticated/metas'
-      path: '/metas'
-      fullPath: '/metas'
-      preLoaderRoute: typeof AuthenticatedMetasRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/financeiro': {
-      id: '/_authenticated/financeiro'
-      path: '/financeiro'
-      fullPath: '/financeiro'
-      preLoaderRoute: typeof AuthenticatedFinanceiroRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/extratos': {
-      id: '/_authenticated/extratos'
-      path: '/extratos'
-      fullPath: '/extratos'
-      preLoaderRoute: typeof AuthenticatedExtratosRouteImport
+    '/_authenticated/api-clients': {
+      id: '/_authenticated/api-clients'
+      path: '/api-clients'
+      fullPath: '/api-clients'
+      preLoaderRoute: typeof AuthenticatedApiClientsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/clientes': {
@@ -258,19 +223,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/api-clients': {
-      id: '/_authenticated/api-clients'
-      path: '/api-clients'
-      fullPath: '/api-clients'
-      preLoaderRoute: typeof AuthenticatedApiClientsRouteImport
+    '/_authenticated/extratos': {
+      id: '/_authenticated/extratos'
+      path: '/extratos'
+      fullPath: '/extratos'
+      preLoaderRoute: typeof AuthenticatedExtratosRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/api/public/orders': {
-      id: '/api/public/orders'
-      path: '/api/public/orders'
-      fullPath: '/api/public/orders'
-      preLoaderRoute: typeof ApiPublicOrdersRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_authenticated/financeiro': {
+      id: '/_authenticated/financeiro'
+      path: '/financeiro'
+      fullPath: '/financeiro'
+      preLoaderRoute: typeof AuthenticatedFinanceiroRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/metas': {
+      id: '/_authenticated/metas'
+      path: '/metas'
+      fullPath: '/metas'
+      preLoaderRoute: typeof AuthenticatedMetasRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/notificacoes': {
+      id: '/_authenticated/notificacoes'
+      path: '/notificacoes'
+      fullPath: '/notificacoes'
+      preLoaderRoute: typeof AuthenticatedNotificacoesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/pedidos': {
+      id: '/_authenticated/pedidos'
+      path: '/pedidos'
+      fullPath: '/pedidos'
+      preLoaderRoute: typeof AuthenticatedPedidosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/produtos': {
+      id: '/_authenticated/produtos'
+      path: '/produtos'
+      fullPath: '/produtos'
+      preLoaderRoute: typeof AuthenticatedProdutosRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/clientes/$customerId': {
       id: '/_authenticated/clientes/$customerId'
@@ -278,6 +271,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/clientes/$customerId'
       preLoaderRoute: typeof AuthenticatedClientesCustomerIdRouteImport
       parentRoute: typeof AuthenticatedClientesRoute
+    }
+    '/api/public/orders': {
+      id: '/api/public/orders'
+      path: '/api/public/orders'
+      fullPath: '/api/public/orders'
+      preLoaderRoute: typeof ApiPublicOrdersRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
