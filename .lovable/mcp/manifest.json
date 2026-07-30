@@ -1,0 +1,182 @@
+{
+  "version": 1,
+  "sdk_version": "0.25.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://aooggiqmhvigoulyioum.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "erp-hentech-solutions",
+      "version": "0.1.0",
+      "title": "ERP - Hentech Solutions"
+    },
+    "tools": [
+      {
+        "name": "list_products",
+        "title": "Listar produtos",
+        "description": "Lista produtos ativos do ERP com preço, custo e categoria. Aceita busca por nome.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "search": {
+              "description": "Texto para filtrar pelo nome do produto.",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Máximo de registros (padrão 25).",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_customers",
+        "title": "Listar clientes",
+        "description": "Lista clientes cadastrados no ERP, com busca opcional por nome, e-mail ou documento.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "search": {
+              "description": "Texto para filtrar por nome do cliente.",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Máximo de registros (padrão 25).",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_orders",
+        "title": "Listar pedidos",
+        "description": "Lista pedidos do ERP com cliente, plano, valor total e status (entrada/pendente, em_negociacao, em_execucao, pronto_entrega, concluido, cancelado).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "status": {
+              "description": "Filtrar por status exato do pedido.",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Máximo de registros (padrão 25).",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_goals",
+        "title": "Listar metas de vendas",
+        "description": "Lista as metas de vendas/faturamento com valor alvo, realizado e período.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "period_type": {
+              "description": "Filtrar pelo tipo de período (weekly, monthly, quarterly).",
+              "type": "string"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "financial_summary",
+        "title": "Resumo financeiro",
+        "description": "Resume receitas, despesas e lucro dos lançamentos financeiros em um intervalo de datas (formato AAAA-MM-DD).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "description": "Data inicial no formato AAAA-MM-DD."
+            },
+            "to": {
+              "type": "string",
+              "description": "Data final no formato AAAA-MM-DD."
+            }
+          },
+          "required": [
+            "from",
+            "to"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_order_status",
+        "title": "Atualizar status do pedido",
+        "description": "Atualiza o status de um pedido do ERP. Status válidos: pendente, em_negociacao, em_execucao, pronto_entrega, concluido, cancelado.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "order_id": {
+              "type": "string",
+              "description": "ID do pedido (UUID)."
+            },
+            "status": {
+              "type": "string",
+              "description": "Novo status do pedido."
+            }
+          },
+          "required": [
+            "order_id",
+            "status"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
