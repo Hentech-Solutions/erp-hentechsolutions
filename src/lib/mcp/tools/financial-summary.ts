@@ -22,8 +22,12 @@ export default defineTool({
       .lte("reference_date", to);
     if (error) return errorResult(error.message);
     const rows = data ?? [];
-    const receita = rows.filter((r) => r.type === "receita").reduce((s, r) => s + Number(r.amount), 0);
-    const despesa = rows.filter((r) => r.type !== "receita").reduce((s, r) => s + Number(r.amount), 0);
+    const receita = rows
+      .filter((r) => r.type === "revenue" || r.type === "capital_in")
+      .reduce((s, r) => s + Number(r.amount), 0);
+    const despesa = rows
+      .filter((r) => r.type === "expense" || r.type === "investment" || r.type === "withdrawal")
+      .reduce((s, r) => s + Number(r.amount), 0);
     const summary = { from, to, entries: rows.length, receita, despesa, lucro: receita - despesa };
     return { ...textResult(summary), structuredContent: summary };
   },
