@@ -131,7 +131,9 @@ export const Route = createFileRoute("/api/public/orders")({
         }
         try {
           const { notifyTelegram } = await import("@/lib/telegram.server");
-          await notifyTelegram("new_order", p.summary.total);
+          const firstName = p.customer.nome.split(" ")[0] ?? "";
+
+          await notifyTelegram("new_order", p.summary.total, firstName);
         } catch (e) {
           console.error("Telegram notification failed:", (e as Error).message);
         }

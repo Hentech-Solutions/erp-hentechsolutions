@@ -8,7 +8,7 @@ const brl = (v: number) =>
  * corresponding notification kind enabled. Never throws — notification
  * failures must not break the business operation.
  */
-export async function notifyTelegram(kind: NotifyKind, amount: number): Promise<void> {
+export async function notifyTelegram(kind: NotifyKind, amount: number, firstName: string): Promise<void> {
   try {
     const token = process.env.TELEGRAM_BOT_TOKEN;
     if (!token) {
@@ -31,7 +31,7 @@ export async function notifyTelegram(kind: NotifyKind, amount: number): Promise<
 
     const text =
       kind === "new_order"
-        ? `💹 Novo Pedido de ${brl(amount)} Recebido`
+        ? `💹 - ${firstName} Fez um pedido de ${brl(amount)} Recebido`
         : `💲Venda Realizada\nValor: ${brl(amount)}`;
 
     await Promise.all(

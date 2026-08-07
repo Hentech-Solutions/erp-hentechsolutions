@@ -8,7 +8,7 @@ export const notifySaleCompleted = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ amount: z.number().nonnegative() }).parse(input))
   .handler(async ({ data }) => {
     const { notifyTelegram } = await import("@/lib/telegram.server");
-    await notifyTelegram("sale", data.amount);
+    await notifyTelegram("sale", data.amount, "");
     return { ok: true };
   });
 
@@ -17,6 +17,6 @@ export const sendTelegramTest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async () => {
     const { notifyTelegram } = await import("@/lib/telegram.server");
-    await notifyTelegram("new_order", 0);
+    await notifyTelegram("new_order", 0, "");
     return { ok: true };
   });
