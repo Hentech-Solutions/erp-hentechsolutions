@@ -31,7 +31,7 @@ export async function notifyTelegram(kind: NotifyKind, amount: number, firstName
 
     const text =
       kind === "new_order"
-        ? `💹 - ${firstName} Fez um pedido de ${brl(amount)} Recebido`
+        ? `💹 ${firstName} fez um pedido de ${brl(amount)} Recebido`
         : `💲Venda Realizada\nValor: ${brl(amount)}`;
 
     await Promise.all(
