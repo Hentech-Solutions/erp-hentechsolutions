@@ -102,20 +102,47 @@ export async function listGoals(periodType?: GoalPeriod): Promise<GoalWithProgre
   });
 }
 
-/** KPIs for the active period type, aggregating goals overlapping current period. */
-export async function getPeriodMetrics(periodType: GoalPeriod) {
-  const range = currentRange(periodType);
-  const { data: goals, error } = await supabase
-    .from("sales_goals")
-    .select("*")
-    .eq("period_type", periodType)
-    .lte("start_date", range.to)
-    .gte("end_date", range.from);
-  if (error) throw error;
-  const target = (goals ?? []).reduce((s, g) => s + Number(g.target_value), 0);
-  const real = (goals ?? []).reduce((s, g: any) => s + Number(g.realized_value ?? 0), 0);
-  const pct = target > 0 ? (real / target) * 100 : 0;
-  return { real, target, pct, status: statusFor(pct), range };
+export type GoalsOverview = {
+  goalCount: number;
+  target: number;
+  real: number;
+  pct: number;
+  status: "success" | "warning" | "danger";
+  /** Quanto do período já passou, em %. */
+  elapsedPct: number;
+  /** Onde o realizado deveria estar agora, no ritmo linear. */
+  expectedByNow: number;
+  /** Positivo = adiantado em relação ao ritmo necessário. */
+  paceDiff: number;
+  categories: Array<{ category: string; target: number; real: number; pct: number }>;
+};
+
+/**
+ * Visão de metas para um intervalo de datas.
+ *
+ * Antes o KPI "% atingido" filtrava metas que cruzam o período corrente
+ * enquanto o gráfico por categoria pegava TODAS as metas do tipo — os dois
+ * discordavam por construção. Agora ambos saem desta chamada.
+ */
+export async function getGoalsOverview(from: string, to: string): Promise<GoalsOverview> {
+  const d = await rpc<Record<string, unknown>>("get_goals_overview", { _from: from, _to: to });
+  const pct = Number(d.pct ?? 0);
+  return {
+    goalCount: Number(d.goal_count ?? 0),
+    target: Number(d.target ?? 0),
+    real: Number(d.real ?? 0),
+    pct,
+    status: statusFor(pct),
+    elapsedPct: Number(d.elapsed_pct ?? 0),
+    expectedByNow: Number(d.expected_by_now ?? 0),
+    paceDiff: Number(d.pace_diff ?? 0),
+    categories: ((d.categories ?? []) as Array<Record<string, unknown>>).map((c) => ({
+      category: String(c.category),
+      target: Number(c.target ?? 0),
+      real: Number(c.real ?? 0),
+      pct: Number(c.pct ?? 0),
+    })),
+  };
 }
 
 /**
@@ -137,73 +164,25 @@ export async function getGoalVsRealSeries(periodType: GoalPeriod) {
   }));
 }
 
-/** Progress per category for active period type goals overlapping current period. */
-export async function getProgressByCategory(periodType: GoalPeriod) {
-  const goals = await listGoals(periodType);
-  const map = new Map<string, { category: string; target: number; real: number }>();
-  for (const g of goals) {
-    const cur = map.get(g.category) ?? { category: g.category, target: 0, real: 0 };
-    cur.target += Number(g.target_value);
-    cur.real += g.real_value;
-    map.set(g.category, cur);
-  }
-  return Array.from(map.values())
-    .map((c) => {
-      const pct = c.target > 0 ? (c.real / c.target) * 100 : 0;
-      return { ...c, pct, status: statusFor(pct) };
-    })
-    .sort((a, b) => b.pct - a.pct);
-}
-
-/** Quarterly accumulated by week vs quarterly target. */
-export async function getQuarterlyWeeklyAccum() {
-  const range = currentRange("quarterly");
-  const { data: goals } = await supabase
-    .from("sales_goals")
-    .select("id, target_value")
-    .eq("period_type", "quarterly")
-    .lte("start_date", range.to)
-    .gte("end_date", range.from);
-
-  const target = (goals ?? []).reduce((s, g) => s + Number(g.target_value), 0);
-  const goalIds = (goals ?? []).map((g) => g.id);
-
-  let entries: { amount: number; sale_date: string }[] = [];
-  if (goalIds.length > 0) {
-    const { data } = await supabase
-      .from("sales_entries")
-      .select("amount, sale_date")
-      .in("goal_id", goalIds)
-      .gte("sale_date", range.from)
-      .lte("sale_date", range.to);
-    entries = (data ?? []).map((r) => ({ amount: Number(r.amount), sale_date: r.sale_date }));
-  }
-
-  // build weeks
-  const start = new Date(range.from);
-  const end = new Date(range.to);
-  const weeks: { label: string; from: Date; to: Date }[] = [];
-  let cursor = new Date(start);
-  let idx = 1;
-  while (cursor <= end) {
-    const wEnd = new Date(cursor);
-    wEnd.setDate(cursor.getDate() + 6);
-    if (wEnd > end) wEnd.setTime(end.getTime());
-    weeks.push({ label: `S${idx}`, from: new Date(cursor), to: new Date(wEnd) });
-    cursor.setDate(cursor.getDate() + 7);
-    idx++;
-  }
-
-  let acc = 0;
-  return weeks.map((w) => {
-    const weekTotal = entries
-      .filter((e) => {
-        const d = new Date(e.sale_date);
-        return d >= w.from && d <= w.to;
-      })
-      .reduce((s, e) => s + e.amount, 0);
-    acc += weekTotal;
-    return { week: w.label, real: weekTotal, acumulado: acc, meta: target };
+/**
+ * Série meta × realizado acumulado dentro do período selecionado.
+ *
+ * Substitui `getQuarterlyWeeklyAccum`, que era sempre trimestral (ignorava a
+ * aba escolhida) e lia só `sales_entries` — uma meta de faturamento aparecia
+ * zerada ali mesmo com o card cheio.
+ */
+export async function getGoalPaceSeries(from: string, to: string) {
+  const rows = await rpc<Array<{ month: string; meta: number; real_value: number }>>(
+    "get_goal_vs_real_series",
+    { _period_type: "monthly", _months: 6 },
+  );
+  const series = (rows ?? []).filter((r) => r.month >= from.slice(0, 7) && r.month <= to);
+  let accReal = 0;
+  let accMeta = 0;
+  return series.map((r) => {
+    accReal += Number(r.real_value);
+    accMeta += Number(r.meta);
+    return { date: r.month, real: accReal, meta: accMeta };
   });
 }
 

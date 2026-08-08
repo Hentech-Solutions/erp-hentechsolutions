@@ -27,7 +27,13 @@ export function AlertsPanel({
           {alerts.map((a, i) => {
             const Icon = icon[a.severity];
             return (
-              <li key={i} className={cn("flex items-start gap-3 rounded-md border p-3 text-xs", tone[a.severity])}>
+              <li
+                key={i}
+                className={cn(
+                  "flex items-start gap-3 rounded-md border p-3 text-xs",
+                  tone[a.severity],
+                )}
+              >
                 <Icon className="h-4 w-4 shrink-0 mt-0.5" />
                 <div>
                   <div className="font-medium">{a.title}</div>
