@@ -9,6 +9,7 @@ import { PeriodPicker } from "@/components/dashboard/PeriodPicker";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { EntryForm } from "@/components/financial/EntryForm";
 import { EntryTable } from "@/components/financial/EntryTable";
+import { DreStatement } from "@/components/financial/DreStatement";
 import { last12Months, type Period } from "@/lib/periods";
 import { getProfitBreakdown } from "@/lib/data/financial";
 import { formatBRL, formatPercentPlain } from "@/lib/formatters";
@@ -63,19 +64,12 @@ function FinancePage() {
           </TabsContent>
           <TabsContent value="profit" className="mt-4 space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <KPICard label="Receita" value={formatBRL(profit.data?.revenue ?? 0)} />
-              <KPICard label="Despesas" value={formatBRL(profit.data?.expense ?? 0)} />
-              <KPICard label="Lucro operacional" value={formatBRL(profit.data?.operationalProfit ?? 0)} emphasis="primary" />
+              <KPICard label="Receita bruta" value={formatBRL(profit.data?.revenue ?? 0)} />
+              <KPICard label="CMV" value={formatBRL(profit.data?.cogs ?? 0)} hint="custo dos produtos vendidos" />
+              <KPICard label="Lucro operacional" value={formatBRL(profit.data?.operatingProfit ?? 0)} emphasis="primary" />
               <KPICard label="Margem líquida" value={formatPercentPlain(profit.data?.netMargin ?? 0)} />
             </div>
-            <div className="rounded-xl border border-border bg-card p-5 text-sm space-y-3">
-              <div className="flex justify-between"><span className="text-muted-foreground">Lucro bruto</span><span className="tabular-nums font-medium">{formatBRL(profit.data?.grossProfit ?? 0)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Lucro operacional</span><span className="tabular-nums font-medium">{formatBRL(profit.data?.operationalProfit ?? 0)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Lucro líquido</span><span className="tabular-nums font-semibold text-success">{formatBRL(profit.data?.netProfit ?? 0)}</span></div>
-              <hr className="border-border" />
-              <div className="flex justify-between text-xs"><span className="text-muted-foreground">Margem bruta</span><span className="tabular-nums">{formatPercentPlain(profit.data?.grossMargin ?? 0)}</span></div>
-              <div className="flex justify-between text-xs"><span className="text-muted-foreground">Margem operacional</span><span className="tabular-nums">{formatPercentPlain(profit.data?.operationalMargin ?? 0)}</span></div>
-            </div>
+            <DreStatement dre={profit.data} />
           </TabsContent>
         </Tabs>
       </div>

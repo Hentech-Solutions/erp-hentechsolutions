@@ -26,6 +26,7 @@ import {
   type OrderStatus,
 } from "@/lib/data/orders";
 import { formatBRL, formatDate } from "@/lib/formatters";
+import { PaymentBadge, PaymentPanel } from "@/components/orders/PaymentBadge";
 
 export const Route = createFileRoute("/_authenticated/pedidos")({
   head: () => ({ meta: [{ title: "Pedidos — Gestão Empresarial" }] }),
@@ -126,9 +127,19 @@ function PedidosPage() {
       await updateOrderStatus(o.id, status);
       if (status === "concluido") {
         const res = await registerOrderSale(o);
-        if (res === "created") {
-          toast.success(`Venda de ${formatBRL(Number(o.total))} lançada no financeiro.`);
+        if (res.status === "created") {
+          toast.success(
+            res.settled
+              ? `Venda de ${formatBRL(Number(o.total))} lançada e liquidada.`
+              : `Venda de ${formatBRL(Number(o.total))} lançada em Contas a Receber.`,
+          );
+          if (res.plan_matched === false) {
+            toast.warning("Nenhum plano do catálogo bateu — custo entrou como zero.", {
+              description: "Cadastre o plano em /planos para a margem sair correta.",
+            });
+          }
         }
+        qc.invalidateQueries({ queryKey: ["apar"] });
         qc.invalidateQueries({ queryKey: ["entries"] });
         qc.invalidateQueries({ queryKey: ["profit"] });
         qc.invalidateQueries({ queryKey: ["dashboard"] });
@@ -324,6 +335,9 @@ function PedidosPage() {
                             <span className="text-sm font-semibold tabular-nums">{formatBRL(o.total)}</span>
                             <span className="text-[10px] text-muted-foreground">{formatDate(o.created_at)}</span>
                           </div>
+                          <div className="mt-1.5">
+                            <PaymentBadge status={o.payment_status} />
+                          </div>
                           <div className="mt-2 flex gap-1">
                             <a
                               href={chatUrl(o)}
@@ -377,6 +391,7 @@ function PedidosPage() {
                       <Badge variant="outline" className={STATUS_STYLE[o.status]}>
                         {STATUS_LABEL[o.status]}
                       </Badge>
+                      <PaymentBadge status={o.payment_status} />
                       <span className="text-[11px] text-muted-foreground">
                         recebido em {formatDate(o.created_at)}
                       </span>
@@ -545,6 +560,7 @@ function PedidosPage() {
                   <Badge variant="outline" className={STATUS_STYLE[detail.status]}>
                     {STATUS_LABEL[detail.status]}
                   </Badge>
+                  <PaymentBadge status={detail.payment_status} />
                 </div>
                 <DialogTitle className="text-left text-xl">{detail.customer_name}</DialogTitle>
                 <DialogDescription className="text-left">
@@ -553,12 +569,13 @@ function PedidosPage() {
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="rounded-xl border border-border bg-card/60 p-4 flex flex-wrap items-end justify-between gap-3">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-xl border border-border bg-card/60 p-4 flex flex-col justify-between">
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Valor total</div>
                   <div className="text-2xl sm:text-3xl font-semibold tabular-nums">{formatBRL(detail.total)}</div>
+                  <span className="text-[11px] text-muted-foreground">{detail.currency}</span>
                 </div>
-                <span className="text-[11px] text-muted-foreground">{detail.currency}</span>
+                <PaymentPanel order={detail} />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -1,6 +1,22 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Wallet, Package, Users, Target, LogOut, FileText, ShoppingBag, KeyRound, Menu, Bell } from "lucide-react";
+import {
+  LayoutDashboard,
+  Wallet,
+  Package,
+  Users,
+  Target,
+  LogOut,
+  FileText,
+  ShoppingBag,
+  KeyRound,
+  Menu,
+  Bell,
+  CalendarClock,
+  ScrollText,
+  Layers,
+  BookOpen,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +30,8 @@ const nav = [
   { to: "/metas", label: "Metas", icon: Target },
   { to: "/pedidos", label: "Pedidos", icon: ShoppingBag },
   { to: "/financeiro", label: "Centro Financeiro", icon: Wallet },
+  { to: "/contas", label: "Contas a Pagar/Receber", icon: CalendarClock },
+  { to: "/planos", label: "Planos", icon: Layers },
   { to: "/produtos", label: "Produtos", icon: Package },
   { to: "/clientes", label: "Clientes", icon: Users },
 ];
@@ -26,8 +44,10 @@ export function AppShell({ children, title }: { children: React.ReactNode; title
   const items = [
     ...nav,
     ...(role.canAccessStatements ? [{ to: "/extratos", label: "Extratos", icon: FileText }] : []),
+    { to: "/docs", label: "Documentação da API", icon: BookOpen },
     ...(role.isAdmin
       ? [
+          { to: "/auditoria", label: "Auditoria", icon: ScrollText },
           { to: "/api-clients", label: "Clientes de API", icon: KeyRound },
           { to: "/notificacoes", label: "Notificações", icon: Bell },
         ]
@@ -44,7 +64,7 @@ export function AppShell({ children, title }: { children: React.ReactNode; title
       toast.error(error.message);
       return;
     }
-    navigate({ to: "/login" });
+    navigate({ to: "/login", search: { redirect: "/" } });
   }
 
   const navList = (
@@ -63,7 +83,12 @@ export function AppShell({ children, title }: { children: React.ReactNode; title
                 : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
             )}
           >
-            <Icon className={cn("h-4 w-4 transition-colors", active ? "text-primary" : "group-hover:text-primary/80")} />
+            <Icon
+              className={cn(
+                "h-4 w-4 transition-colors",
+                active ? "text-primary" : "group-hover:text-primary/80",
+              )}
+            />
             {n.label}
           </Link>
         );
@@ -96,7 +121,10 @@ export function AppShell({ children, title }: { children: React.ReactNode; title
       </aside>
 
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-        <SheetContent side="left" className="w-[17rem] p-0 bg-sidebar border-sidebar-border flex flex-col">
+        <SheetContent
+          side="left"
+          className="w-[17rem] p-0 bg-sidebar border-sidebar-border flex flex-col"
+        >
           <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
           <div className="px-5 py-5 border-b border-sidebar-border">
             <img src={brandLogo} alt="Hentech Solutions" className="h-9 w-auto object-contain" />
@@ -147,7 +175,9 @@ export function AppShell({ children, title }: { children: React.ReactNode; title
             Sair
           </button>
         </header>
-        <main className="flex-1 p-4 sm:p-6 overflow-x-hidden relative brand-surface">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 overflow-x-hidden relative brand-surface">
+          {children}
+        </main>
       </div>
     </div>
   );

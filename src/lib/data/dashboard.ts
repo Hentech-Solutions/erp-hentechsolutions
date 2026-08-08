@@ -1,150 +1,164 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Period } from "@/lib/periods";
-import { previousPeriod } from "@/lib/periods";
+import { rpc } from "@/lib/data/rpc";
+import { getApArSummary } from "@/lib/data/payables";
+import { formatBRL as brl } from "@/lib/formatters";
 
-type EntryRow = {
-  type: "revenue" | "expense" | "investment" | "withdrawal" | "capital_in";
-  amount: number;
-  reference_date: string;
-  category_id: string | null;
+export type Kpi = { value: number; delta: number };
+
+export type DashboardKpis = {
+  revenue: Kpi;
+  profit: Kpi;
+  cash: Kpi;
+  salesCount: Kpi;
+  ticket: Kpi;
+  avgMargin: Kpi;
+  /** Data de corte do caixa: nunca no futuro. */
+  cashAsOf: string;
 };
 
-async function fetchEntries(p: Period): Promise<EntryRow[]> {
-  const { data, error } = await supabase
-    .from("financial_entries")
-    .select("type, amount, reference_date, category_id")
-    .is("deleted_at", null)
-    .gte("reference_date", p.from)
-    .lte("reference_date", p.to);
-  if (error) throw error;
-  return (data ?? []).map((r) => ({ ...r, amount: Number(r.amount) })) as EntryRow[];
+type KpiPayload = {
+  revenue: number;
+  prev_revenue: number;
+  expense: number;
+  prev_expense: number;
+  profit: number;
+  prev_profit: number;
+  cash: number;
+  cash_as_of: string;
+  sales_count: number;
+  ticket: number;
+  avg_margin: number;
+};
+
+const delta = (a: number, b: number) =>
+  b === 0 ? (a > 0 ? 100 : 0) : ((a - b) / Math.abs(b)) * 100;
+
+/**
+ * KPIs consolidados. A agregacao roda no Postgres: somar no browser exigia
+ * baixar todas as linhas do periodo, e o PostgREST corta em 1000 sem avisar.
+ */
+export async function getKpis(p: Period): Promise<DashboardKpis> {
+  const d = await rpc<KpiPayload>("get_dashboard_kpis", { _from: p.from, _to: p.to });
+  const prevTicket = d.prev_revenue > 0 && d.sales_count > 0 ? d.prev_revenue / d.sales_count : 0;
+  return {
+    revenue: { value: Number(d.revenue), delta: delta(d.revenue, d.prev_revenue) },
+    profit: { value: Number(d.profit), delta: delta(d.profit, d.prev_profit) },
+    // Caixa e acumulado desde o inicio ate cash_as_of, entao nao tem "periodo
+    // anterior" com que se comparar.
+    cash: { value: Number(d.cash), delta: 0 },
+    salesCount: { value: Number(d.sales_count), delta: 0 },
+    ticket: { value: Number(d.ticket), delta: delta(d.ticket, prevTicket) },
+    avgMargin: { value: Number(d.avg_margin), delta: 0 },
+    cashAsOf: d.cash_as_of,
+  };
 }
 
-export async function getKpis(p: Period) {
-  const [curr, prev] = await Promise.all([fetchEntries(p), fetchEntries(previousPeriod(p))]);
-  const agg = (rows: EntryRow[]) => {
-    const revenue = rows.filter((r) => r.type === "revenue").reduce((s, r) => s + r.amount, 0);
-    const expense = rows.filter((r) => r.type === "expense").reduce((s, r) => s + r.amount, 0);
-    const capIn = rows
-      .filter((r) => r.type === "capital_in" || r.type === "investment")
-      .reduce((s, r) => s + r.amount, 0);
-    const withdrawal = rows.filter((r) => r.type === "withdrawal").reduce((s, r) => s + r.amount, 0);
-    const salesCount = rows.filter((r) => r.type === "revenue").length;
-    return {
-      revenue,
-      expense,
-      capIn,
-      withdrawal,
-      profit: revenue - expense,
-      cash: revenue + capIn - expense - withdrawal,
-      salesCount,
-      ticket: salesCount > 0 ? revenue / salesCount : 0,
-    };
-  };
-  const c = agg(curr);
-  const pv = agg(prev);
-  const delta = (a: number, b: number) => (b === 0 ? (a > 0 ? 100 : 0) : ((a - b) / Math.abs(b)) * 100);
+type MonthlyRow = {
+  month: string;
+  revenue: number;
+  expense: number;
+  cash_in: number;
+  cash_out: number;
+};
 
-  const { data: products } = await supabase
-    .from("products")
-    .select("margin")
-    .eq("status", "active")
-    .is("deleted_at", null);
-  const margins = (products ?? []).map((p) => Number(p.margin ?? 0));
-  const avgMargin = margins.length ? margins.reduce((s, m) => s + m, 0) / margins.length : 0;
-
-  return {
-    revenue: { value: c.revenue, delta: delta(c.revenue, pv.revenue) },
-    profit: { value: c.profit, delta: delta(c.profit, pv.profit) },
-    cash: { value: c.cash, delta: delta(c.cash, pv.cash) },
-    salesCount: { value: c.salesCount, delta: delta(c.salesCount, pv.salesCount) },
-    ticket: { value: c.ticket, delta: delta(c.ticket, pv.ticket) },
-    avgMargin: { value: avgMargin, delta: 0 },
-  };
+async function monthlySeries(p: Period): Promise<MonthlyRow[]> {
+  const rows = await rpc<MonthlyRow[]>("get_monthly_series", { _from: p.from, _to: p.to });
+  return (rows ?? []).map((r) => ({
+    month: r.month,
+    revenue: Number(r.revenue),
+    expense: Number(r.expense),
+    cash_in: Number(r.cash_in),
+    cash_out: Number(r.cash_out),
+  }));
 }
 
 export async function getRevenueSeries(p: Period) {
-  const rows = await fetchEntries(p);
-  const byMonth = new Map<string, { revenue: number; expense: number }>();
-  for (const r of rows) {
-    const key = r.reference_date.slice(0, 7) + "-01";
-    const e = byMonth.get(key) ?? { revenue: 0, expense: 0 };
-    if (r.type === "revenue") e.revenue += r.amount;
-    if (r.type === "expense") e.expense += r.amount;
-    byMonth.set(key, e);
-  }
-  return Array.from(byMonth.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, v]) => ({ date, ...v }));
+  const rows = await monthlySeries(p);
+  return rows.map((r) => ({ date: r.month, revenue: r.revenue, expense: r.expense }));
 }
 
 export async function getCashFlowSeries(p: Period) {
-  const rows = await fetchEntries(p);
-  const byMonth = new Map<string, { in: number; out: number }>();
-  for (const r of rows) {
-    const key = r.reference_date.slice(0, 7) + "-01";
-    const e = byMonth.get(key) ?? { in: 0, out: 0 };
-    if (r.type === "revenue" || r.type === "capital_in" || r.type === "investment") e.in += r.amount;
-    if (r.type === "expense" || r.type === "withdrawal") e.out += r.amount;
-    byMonth.set(key, e);
-  }
+  const rows = await monthlySeries(p);
   let acc = 0;
-  return Array.from(byMonth.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, v]) => {
-      acc += v.in - v.out;
-      return { date, in: v.in, out: v.out, balance: acc };
-    });
+  return rows.map((r) => {
+    acc += r.cash_in - r.cash_out;
+    return { date: r.month, in: r.cash_in, out: r.cash_out, balance: acc };
+  });
 }
 
 export async function getExpenseBreakdown(p: Period) {
-  const { data, error } = await supabase
-    .from("financial_entries")
-    .select("amount, category_id, financial_categories(name, color)")
-    .is("deleted_at", null)
-    .eq("type", "expense")
-    .gte("reference_date", p.from)
-    .lte("reference_date", p.to);
-  if (error) throw error;
-  const map = new Map<string, { name: string; color: string; amount: number }>();
-  for (const r of data ?? []) {
-    const cat: any = r.financial_categories;
-    const name = cat?.name ?? "Sem categoria";
-    const color = cat?.color ?? "#6b7280";
-    const k = name;
-    const e = map.get(k) ?? { name, color, amount: 0 };
-    e.amount += Number(r.amount);
-    map.set(k, e);
-  }
-  const all = Array.from(map.values()).sort((a, b) => b.amount - a.amount);
-  const total = all.reduce((s, x) => s + x.amount, 0);
-  return all.slice(0, 5).map((x) => ({ ...x, percentage: total > 0 ? (x.amount / total) * 100 : 0 }));
+  const rows = await rpc<
+    Array<{ name: string; color: string; amount: number; percentage: number }>
+  >("get_expense_breakdown", { _from: p.from, _to: p.to });
+  return (rows ?? []).map((r) => ({
+    name: r.name,
+    color: r.color,
+    amount: Number(r.amount),
+    percentage: Number(r.percentage),
+  }));
 }
 
-export async function getAlerts(p: Period) {
-  const alerts: Array<{ severity: "info" | "warning" | "critical"; title: string; message: string }> = [];
+export type Alert = {
+  severity: "info" | "warning" | "critical";
+  title: string;
+  message: string;
+};
+
+export async function getAlerts(p: Period): Promise<Alert[]> {
+  const alerts: Alert[] = [];
+
   const cf = await getCashFlowSeries(p);
   const lastBal = cf.at(-1)?.balance ?? 0;
   if (lastBal < 0) {
     alerts.push({
       severity: "critical",
       title: "Fluxo de caixa negativo",
-      message: `Saldo acumulado do período: R$ ${lastBal.toFixed(2)}`,
+      message: `Saldo acumulado do período: ${brl(lastBal)}`,
     });
   }
+
+  // Contas vencidas: a base ja tinha is_settled/payment_date preenchidos e
+  // ninguem olhava para eles.
+  const aging = await getApArSummary();
+  const overduePayable = aging.payable.overdue;
+  const overdueReceivable = aging.receivable.overdue;
+  if (overduePayable.total > 0) {
+    alerts.push({
+      severity: "critical",
+      title: `${overduePayable.count} conta(s) a pagar vencida(s)`,
+      message: `Total em atraso: ${brl(overduePayable.total)}`,
+    });
+  }
+  if (overdueReceivable.total > 0) {
+    alerts.push({
+      severity: "warning",
+      title: `${overdueReceivable.count} recebimento(s) em atraso`,
+      message: `Total a receber vencido: ${brl(overdueReceivable.total)}`,
+    });
+  }
+  if (aging.payable.dueSoon.total > 0) {
+    alerts.push({
+      severity: "info",
+      title: `${aging.payable.dueSoon.count} conta(s) vencendo em 30 dias`,
+      message: `Total previsto: ${brl(aging.payable.dueSoon.total)}`,
+    });
+  }
+
   const { data: products } = await supabase
     .from("products")
     .select("id, name, margin")
     .eq("status", "active")
     .is("deleted_at", null);
-  for (const p of products ?? []) {
-    if (Number(p.margin ?? 0) < 10) {
+  for (const prod of products ?? []) {
+    if (Number(prod.margin ?? 0) < 10) {
       alerts.push({
         severity: "warning",
-        title: `Margem baixa: ${p.name}`,
-        message: `Margem atual de ${Number(p.margin).toFixed(1)}%`,
+        title: `Margem baixa: ${prod.name}`,
+        message: `Margem atual de ${Number(prod.margin).toFixed(1)}%`,
       });
     }
   }
+
   return alerts.slice(0, 6);
 }

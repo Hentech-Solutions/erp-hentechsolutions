@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FormModal, FieldGroupLabel } from "@/components/ui/form-modal";
-import { createEntry, listFinancialCategories, VENDA_DE_PRODUTO_CATEGORY_ID, type SaleItemInput } from "@/lib/data/financial";
+import { createEntry, listFinancialCategories, type SaleItemInput } from "@/lib/data/financial";
 import { listProducts } from "@/lib/data/products";
 import { listCustomers } from "@/lib/data/customers";
 import { toISODate, formatBRL } from "@/lib/formatters";
@@ -41,7 +41,10 @@ export function EntryForm({ trigger, defaultType }: { trigger: React.ReactNode; 
     queryFn: () => listFinancialCategories(type),
   });
 
-  const isSale = type === "revenue" && categoryId === VENDA_DE_PRODUTO_CATEGORY_ID;
+  // resolvido por slug: o UUID que estava cravado aqui so existia neste banco
+  const isSale =
+    type === "revenue" &&
+    cats.some((c: any) => c.id === categoryId && c.slug === "venda_produto");
   const productsMode = isSale && !specialPrice;
 
   const { data: prodPage } = useQuery({

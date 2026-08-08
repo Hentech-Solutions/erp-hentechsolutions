@@ -1,11 +1,39 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { rpc } from "@/lib/data/rpc";
 
 export type GoalPeriod = "weekly" | "monthly" | "quarterly";
+
+/**
+ * Como o realizado da meta é calculado:
+ *  - `revenue`: soma toda receita do Centro Financeiro no período, por
+ *    competência. Atualiza sozinha — pedido concluído, venda avulsa ou
+ *    lançamento manual entram automaticamente.
+ *  - `product`: soma as vendas do produto vinculado.
+ *  - `manual`: soma apenas o que for digitado em "Lançar venda".
+ */
+export type GoalType = "revenue" | "product" | "manual";
+
+export const GOAL_TYPE_LABEL: Record<GoalType, string> = {
+  revenue: "Faturamento",
+  product: "Por produto",
+  manual: "Lançamento manual",
+};
+
+export const GOAL_TYPE_HINT: Record<GoalType, string> = {
+  revenue: "Acompanha toda a receita do período automaticamente.",
+  product: "Soma as vendas do produto vinculado.",
+  manual: "Só conta o que você lançar na mão.",
+};
+
+/** Metas que se alimentam sozinhas não têm lançamento manual. */
+export const isAutoGoal = (t: GoalType) => t === "revenue" || t === "product";
+
 export type SalesGoal = Database["public"]["Tables"]["sales_goals"]["Row"] & {
   product_id?: string | null;
   goal_start_date?: string | null;
   realized_value?: number | null;
+  goal_type?: GoalType;
   products?: { id: string; name: string } | null;
 };
 export type SalesEntry = Database["public"]["Tables"]["sales_entries"]["Row"];
@@ -16,6 +44,7 @@ export type GoalWithProgress = SalesGoal & {
   pct: number;
   status: "success" | "warning" | "danger";
   product_name?: string | null;
+  goal_type: GoalType;
 };
 
 export function statusFor(pct: number): "success" | "warning" | "danger" {
@@ -68,6 +97,7 @@ export async function listGoals(periodType?: GoalPeriod): Promise<GoalWithProgre
       pct,
       status: statusFor(pct),
       product_name: g.products?.name ?? null,
+      goal_type: (g.goal_type ?? (g.product_id ? "product" : "manual")) as GoalType,
     };
   });
 }
@@ -88,56 +118,23 @@ export async function getPeriodMetrics(periodType: GoalPeriod) {
   return { real, target, pct, status: statusFor(pct), range };
 }
 
-/** Meta vs Real series by month within current period range (or last 6 months for weekly). */
+/**
+ * Série meta × realizado por mês.
+ *
+ * Agregado no Postgres porque a versão anterior lia só `sales_entries`: uma
+ * meta de faturamento apareceria zerada no gráfico do dashboard mesmo com o
+ * card cheio, já que a receita dela vem de `financial_entries`.
+ */
 export async function getGoalVsRealSeries(periodType: GoalPeriod) {
-  const now = new Date();
-  const months: string[] = [];
-  const monthsBack = periodType === "weekly" ? 3 : periodType === "monthly" ? 6 : 6;
-  for (let i = monthsBack - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push(d.toISOString().slice(0, 7));
-  }
-  const from = months[0] + "-01";
-  const toDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
-
-  const { data: goals } = await supabase
-    .from("sales_goals")
-    .select("id, target_value, start_date, end_date, period_type")
-    .eq("period_type", periodType);
-
-  const { data: entries } = await supabase
-    .from("sales_entries")
-    .select("amount, sale_date, goal_id")
-    .gte("sale_date", from)
-    .lte("sale_date", toDate);
-
-  const goalById = new Map((goals ?? []).map((g) => [g.id, g]));
-  const byMonth = new Map<string, { meta: number; real: number }>();
-  for (const m of months) byMonth.set(m, { meta: 0, real: 0 });
-
-  // distribute each goal's target evenly across months it spans (within window)
-  for (const g of goals ?? []) {
-    const gs = new Date(g.start_date);
-    const ge = new Date(g.end_date);
-    const spanned: string[] = [];
-    for (const m of months) {
-      const mStart = new Date(m + "-01");
-      const mEnd = new Date(mStart.getFullYear(), mStart.getMonth() + 1, 0);
-      if (mEnd >= gs && mStart <= ge) spanned.push(m);
-    }
-    if (spanned.length === 0) continue;
-    const per = Number(g.target_value) / spanned.length;
-    for (const m of spanned) byMonth.get(m)!.meta += per;
-  }
-
-  for (const e of entries ?? []) {
-    if (!goalById.has(e.goal_id)) continue;
-    const m = e.sale_date.slice(0, 7);
-    if (!byMonth.has(m)) continue;
-    byMonth.get(m)!.real += Number(e.amount);
-  }
-
-  return months.map((m) => ({ date: m + "-01", ...byMonth.get(m)! }));
+  const rows = await rpc<Array<{ month: string; meta: number; real_value: number }>>(
+    "get_goal_vs_real_series",
+    { _period_type: periodType, _months: periodType === "weekly" ? 3 : 6 },
+  );
+  return (rows ?? []).map((r) => ({
+    date: r.month,
+    meta: Number(r.meta),
+    real: Number(r.real_value),
+  }));
 }
 
 /** Progress per category for active period type goals overlapping current period. */
@@ -217,7 +214,12 @@ export async function createGoal(input: SalesGoalInsert) {
 }
 
 export async function updateGoal(id: string, patch: Partial<SalesGoalInsert>) {
-  const { data, error } = await supabase.from("sales_goals").update(patch).eq("id", id).select().single();
+  const { data, error } = await supabase
+    .from("sales_goals")
+    .update(patch)
+    .eq("id", id)
+    .select()
+    .single();
   if (error) throw error;
   return data;
 }

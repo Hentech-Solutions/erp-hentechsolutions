@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -11,6 +11,31 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -62,6 +87,8 @@ export type Database = {
           operation: string
           record_id: string
           table_name: string
+          user_email: string | null
+          user_id: string | null
         }
         Insert: {
           changed_at?: string
@@ -71,6 +98,8 @@ export type Database = {
           operation: string
           record_id: string
           table_name: string
+          user_email?: string | null
+          user_id?: string | null
         }
         Update: {
           changed_at?: string
@@ -80,6 +109,8 @@ export type Database = {
           operation?: string
           record_id?: string
           table_name?: string
+          user_email?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -168,6 +199,7 @@ export type Database = {
           id: string
           is_system: boolean
           name: string
+          slug: string | null
           type: Database["public"]["Enums"]["financial_entry_type"]
         }
         Insert: {
@@ -176,6 +208,7 @@ export type Database = {
           id?: string
           is_system?: boolean
           name: string
+          slug?: string | null
           type: Database["public"]["Enums"]["financial_entry_type"]
         }
         Update: {
@@ -184,6 +217,7 @@ export type Database = {
           id?: string
           is_system?: boolean
           name?: string
+          slug?: string | null
           type?: Database["public"]["Enums"]["financial_entry_type"]
         }
         Relationships: []
@@ -198,6 +232,7 @@ export type Database = {
           customer_id: string | null
           deleted_at: string | null
           description: string | null
+          due_date: string
           exported_at: string | null
           external_ref: string | null
           id: string
@@ -221,6 +256,7 @@ export type Database = {
           customer_id?: string | null
           deleted_at?: string | null
           description?: string | null
+          due_date: string
           exported_at?: string | null
           external_ref?: string | null
           id?: string
@@ -244,6 +280,7 @@ export type Database = {
           customer_id?: string | null
           deleted_at?: string | null
           description?: string | null
+          due_date?: string
           exported_at?: string | null
           external_ref?: string | null
           id?: string
@@ -372,9 +409,16 @@ export type Database = {
           customer_name: string
           customer_role: string | null
           customer_whatsapp: string
+          deleted_at: string | null
           id: string
           notes: string | null
           notified_at: string | null
+          due_date: string | null
+          paid_amount: number
+          paid_at: string | null
+          payment_method: string | null
+          payment_status: Database["public"]["Enums"]["order_payment_status"]
+          plan_ref_id: string | null
           order_created_at: string
           plan_id: string
           plan_name: string
@@ -399,9 +443,16 @@ export type Database = {
           customer_name: string
           customer_role?: string | null
           customer_whatsapp: string
+          deleted_at?: string | null
           id?: string
           notes?: string | null
           notified_at?: string | null
+          due_date?: string | null
+          paid_amount?: number
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_status?: Database["public"]["Enums"]["order_payment_status"]
+          plan_ref_id?: string | null
           order_created_at: string
           plan_id: string
           plan_name: string
@@ -426,9 +477,16 @@ export type Database = {
           customer_name?: string
           customer_role?: string | null
           customer_whatsapp?: string
+          deleted_at?: string | null
           id?: string
           notes?: string | null
           notified_at?: string | null
+          due_date?: string | null
+          paid_amount?: number
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_status?: Database["public"]["Enums"]["order_payment_status"]
+          plan_ref_id?: string | null
           order_created_at?: string
           plan_id?: string
           plan_name?: string
@@ -461,6 +519,54 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      plans: {
+        Row: {
+          add_unit_cost: number
+          add_unit_price: number
+          code: string
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          sort_order: number
+          unit_cost: number
+          updated_at: string
+        }
+        Insert: {
+          add_unit_cost?: number
+          add_unit_price?: number
+          code: string
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          price?: number
+          sort_order?: number
+          unit_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          add_unit_cost?: number
+          add_unit_price?: number
+          code?: string
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          sort_order?: number
+          unit_cost?: number
           updated_at?: string
         }
         Relationships: []
@@ -583,6 +689,7 @@ export type Database = {
         Row: {
           created_at: string
           customer_id: string | null
+          deleted_at: string | null
           discount: number
           external_ref: string | null
           id: string
@@ -595,6 +702,7 @@ export type Database = {
         Insert: {
           created_at?: string
           customer_id?: string | null
+          deleted_at?: string | null
           discount?: number
           external_ref?: string | null
           id?: string
@@ -607,6 +715,7 @@ export type Database = {
         Update: {
           created_at?: string
           customer_id?: string | null
+          deleted_at?: string | null
           discount?: number
           external_ref?: string | null
           id?: string
@@ -684,6 +793,7 @@ export type Database = {
           created_at: string
           end_date: string
           goal_start_date: string
+          goal_type: Database["public"]["Enums"]["goal_type"]
           id: string
           period_type: Database["public"]["Enums"]["goal_period_type"]
           product_id: string | null
@@ -697,6 +807,7 @@ export type Database = {
           created_at?: string
           end_date: string
           goal_start_date?: string
+          goal_type?: Database["public"]["Enums"]["goal_type"]
           id?: string
           period_type: Database["public"]["Enums"]["goal_period_type"]
           product_id?: string | null
@@ -710,6 +821,7 @@ export type Database = {
           created_at?: string
           end_date?: string
           goal_start_date?: string
+          goal_type?: Database["public"]["Enums"]["goal_type"]
           id?: string
           period_type?: Database["public"]["Enums"]["goal_period_type"]
           product_id?: string | null
@@ -821,6 +933,111 @@ export type Database = {
       }
     }
     Functions: {
+      cancel_recurrence_series: {
+        Args: { _from: string; _group_id: string }
+        Returns: number
+      }
+      create_sale_with_entry: {
+        Args: {
+          _category_id: string
+          _customer_id?: string
+          _description?: string
+          _discount?: number
+          _due_date?: string
+          _is_settled?: boolean
+          _items: Json
+          _notes?: string
+          _reference_date: string
+        }
+        Returns: {
+          entry_id: string
+          sale_id: string
+        }[]
+      }
+      get_ap_ar_summary: {
+        Args: { _as_of?: string }
+        Returns: {
+          bucket: string
+          bucket_order: number
+          direction: string
+          entry_count: number
+          total: number
+        }[]
+      }
+      get_audit_log: {
+        Args: {
+          _from?: string
+          _limit?: number
+          _offset?: number
+          _table?: string
+          _to?: string
+        }
+        Returns: {
+          changed_at: string
+          id: number
+          new_data: Json
+          old_data: Json
+          operation: string
+          record_id: string
+          table_name: string
+          total_count: number
+          user_email: string
+        }[]
+      }
+      get_dashboard_kpis: {
+        Args: { _from: string; _to: string }
+        Returns: Json
+      }
+      get_dre: { Args: { _from: string; _to: string }; Returns: Json }
+      get_plan_price_mismatches: {
+        Args: Record<string, never>
+        Returns: {
+          catalog_price: number
+          code: string
+          diff: number
+          order_id: string
+          ordered_at: string
+          plan_name: string
+          site_price: number
+        }[]
+      }
+      register_order_sale: { Args: { _order_id: string }; Returns: Json }
+      set_order_payment: {
+        Args: {
+          _amount?: number | null
+          _method?: string | null
+          _order_id: string
+          _paid_at?: string | null
+          _status: Database["public"]["Enums"]["order_payment_status"]
+        }
+        Returns: Json
+      }
+      get_goal_vs_real_series: {
+        Args: {
+          _months?: number
+          _period_type: Database["public"]["Enums"]["goal_period_type"]
+        }
+        Returns: { meta: number; month: string; real_value: number }[]
+      }
+      get_expense_breakdown: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          amount: number
+          color: string
+          name: string
+          percentage: number
+        }[]
+      }
+      get_monthly_series: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          cash_in: number
+          cash_out: number
+          expense: number
+          month: string
+          revenue: number
+        }[]
+      }
       has_any_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]
@@ -835,7 +1052,25 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin: { Args: never; Returns: boolean }
+      is_member: { Args: never; Returns: boolean }
+      is_staff: { Args: never; Returns: boolean }
       recalc_goal_realized: { Args: { _goal_id: string }; Returns: undefined }
+      settle_entries: {
+        Args: { _ids: string[]; _payment_date?: string }
+        Returns: number
+      }
+      unsettle_entries: { Args: { _ids: string[] }; Returns: number }
+      update_recurrence_series: {
+        Args: {
+          _amount?: number
+          _category_id?: string
+          _description?: string
+          _from: string
+          _group_id: string
+        }
+        Returns: number
+      }
     }
     Enums: {
       alert_severity: "info" | "warning" | "critical"
@@ -850,12 +1085,14 @@ export type Database = {
         | "withdrawal"
         | "capital_in"
       goal_period_type: "weekly" | "monthly" | "quarterly"
+      goal_type: "revenue" | "product" | "manual"
       integration_type:
         | "payment_gateway"
         | "erp"
         | "bank_api"
         | "sales_platform"
         | "accounting"
+      order_payment_status: "aguardando" | "parcial" | "pago"
       order_status:
         | "pendente"
         | "em_negociacao"
@@ -991,6 +1228,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       alert_severity: ["info", "warning", "critical"],

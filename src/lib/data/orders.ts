@@ -1,14 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
-import { VENDA_DE_PRODUTO_CATEGORY_ID } from "@/lib/data/financial";
+import { rpc } from "@/lib/data/rpc";
 import { notifySaleCompleted } from "@/lib/telegram.functions";
 
 export type OrderStatus =
-  | "pendente"
-  | "em_negociacao"
-  | "em_execucao"
-  | "pronto_entrega"
-  | "concluido"
-  | "cancelado";
+  "pendente" | "em_negociacao" | "em_execucao" | "pronto_entrega" | "concluido" | "cancelado";
 
 export interface OrderRow {
   id: string;
@@ -35,10 +30,21 @@ export interface OrderRow {
   notified_at: string | null;
   created_at: string;
   updated_at: string;
+  // pagamento: dimensao independente do kanban de execucao
+  payment_status: "aguardando" | "parcial" | "pago";
+  paid_amount: number;
+  paid_at: string | null;
+  payment_method: string | null;
+  due_date: string | null;
+  plan_ref_id: string | null;
 }
 
 export async function listOrders(status?: OrderStatus | "all"): Promise<OrderRow[]> {
-  let q = supabase.from("orders").select("*").order("created_at", { ascending: false });
+  let q = supabase
+    .from("orders")
+    .select("*")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
   if (status && status !== "all") q = q.eq("status", status);
   const { data, error } = await q;
   if (error) throw error;
@@ -84,7 +90,11 @@ export async function getOrdersStats(): Promise<OrdersStats> {
   };
 }
 
-export async function updateOrderStatus(id: string, status: OrderStatus, opts?: { notified?: boolean }) {
+export async function updateOrderStatus(
+  id: string,
+  status: OrderStatus,
+  opts?: { notified?: boolean },
+) {
   const patch = {
     status,
     status_changed_at: new Date().toISOString(),
@@ -95,63 +105,76 @@ export async function updateOrderStatus(id: string, status: OrderStatus, opts?: 
 }
 
 export async function deleteOrder(id: string) {
-  const { error } = await supabase.from("orders").delete().eq("id", id);
+  // Soft delete: um pedido apagado de vez levava junto a rastreabilidade da
+  // receita que ele gerou (external_ref "order:<id>" apontando para o nada).
+  const { error } = await supabase
+    .from("orders")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
   if (error) throw error;
 }
 
+export type RegisterSaleResult = {
+  status: "created" | "skipped";
+  total_cost?: number;
+  settled?: boolean;
+  /** false = nenhum plano do catalogo bateu, entao o custo entrou como zero. */
+  plan_matched?: boolean;
+};
+
 /**
- * Registers a completed order as a sale + revenue entry in the financial center.
- * Idempotent: uses `order:<id>` as external_ref and skips if already registered.
+ * Registra o pedido concluido como venda + receita no financeiro.
+ *
+ * Roda inteiro dentro de uma RPC transacional (`register_order_sale`), que:
+ *  - resolve o custo real pelo catalogo de planos (antes era `total_cost: 0`,
+ *    e todo pedido saia com margem de 100%)
+ *  - grava sale_items, para o CMV chegar no DRE
+ *  - so marca a receita como liquidada se o pagamento ja foi confirmado; antes
+ *    assumia que pedido concluido = pedido pago, e o PIX e manual
+ *  - vincula/cria o cliente no CRM
+ * Idempotente por `external_ref = order:<id>`.
  */
-export async function registerOrderSale(order: OrderRow): Promise<"created" | "skipped"> {
-  const ref = `order:${order.id}`;
-  const { data: existing, error: exErr } = await supabase
-    .from("financial_entries")
-    .select("id")
-    .eq("external_ref", ref)
-    .is("deleted_at", null)
-    .maybeSingle();
-  if (exErr) throw exErr;
-  if (existing) return "skipped";
-
-  const saleDate = new Date().toISOString().slice(0, 10);
-  const total = Number(order.total);
-
-  const { data: sale, error: saleErr } = await supabase
-    .from("sales")
-    .insert({
-      sale_date: saleDate,
-      total_amount: total,
-      total_cost: 0,
-      discount: 0,
-      notes: `Pedido ${order.code} — ${order.plan_name} (${order.customer_name})`,
-      external_ref: ref,
-    })
-    .select("id")
-    .single();
-  if (saleErr) throw saleErr;
-
-  const { error: entryErr } = await supabase.from("financial_entries").insert({
-    type: "revenue",
-    amount: total,
-    category_id: VENDA_DE_PRODUTO_CATEGORY_ID,
-    reference_date: saleDate,
-    description: `Pedido ${order.code} — ${order.plan_name}`,
-    notes: `Cliente: ${order.customer_name}`,
-    recurrence: "one_time",
-    cash_flow_cat: "operational",
-    external_ref: ref,
-    sale_id: sale.id,
-    is_settled: true,
-    payment_date: saleDate,
-  });
-  if (entryErr) throw entryErr;
-  try {
-    await notifySaleCompleted({ data: { amount: total } });
-  } catch (e) {
-    console.error("Telegram notification failed:", (e as Error).message);
+export async function registerOrderSale(order: OrderRow): Promise<RegisterSaleResult> {
+  const res = await rpc<RegisterSaleResult>("register_order_sale", { _order_id: order.id });
+  if (res.status === "created") {
+    try {
+      await notifySaleCompleted({ data: { amount: Number(order.total) } });
+    } catch (e) {
+      console.error("Telegram notification failed:", (e as Error).message);
+    }
   }
-  return "created";
+  return res;
+}
+
+export type PaymentStatus = "aguardando" | "parcial" | "pago";
+
+export const PAYMENT_LABEL: Record<PaymentStatus, string> = {
+  aguardando: "Aguardando pagamento",
+  parcial: "Pago parcialmente",
+  pago: "Pago",
+};
+
+/**
+ * Baixa de pagamento do pedido.
+ *
+ * Espelha no lancamento financeiro correspondente, e o caminho inverso tambem
+ * vale: dar baixa em Contas a Receber marca o pedido como pago (trigger
+ * `trg_sync_order_payment`).
+ */
+export async function setOrderPayment(input: {
+  orderId: string;
+  status: PaymentStatus;
+  amount?: number;
+  method?: string;
+  paidAt?: string;
+}): Promise<{ status: PaymentStatus; paid_amount: number }> {
+  return rpc("set_order_payment", {
+    _order_id: input.orderId,
+    _status: input.status,
+    _amount: input.amount ?? null,
+    _method: input.method ?? null,
+    _paid_at: input.paidAt ?? null,
+  });
 }
 
 /** Sanitize a Brazilian phone number to international E.164 digits for wa.me */
