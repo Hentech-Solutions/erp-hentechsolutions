@@ -35,12 +35,12 @@ export const Route = createFileRoute("/_authenticated/notificacoes")({
       {
         name: "description",
         content:
-          "Gerencie quais sócios recebem alertas automáticos no Telegram para novos pedidos e vendas concluídas.",
+          "Gerencie quais sócios recebem alertas automáticos no Telegram para novos pedidos, leads do site e vendas concluídas.",
       },
       { property: "og:title", content: "Notificações Telegram — ERP Hentech" },
       {
         property: "og:description",
-        content: "Ative ou desative alertas de novos pedidos e vendas para cada sócio.",
+        content: "Ative ou desative alertas de novos pedidos, leads e vendas para cada sócio.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -139,7 +139,8 @@ function NotificationsPage() {
             </h2>
             <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
               Cada sócio cadastrado recebe alertas automáticos do bot. Ative individualmente os
-              avisos de novos pedidos recebidos pela API e de vendas concluídas.
+              avisos de novos pedidos recebidos pela API, de leads vindos do formulário do site e de
+              vendas concluídas.
             </p>
           </div>
           <div className="flex gap-2">
@@ -192,6 +193,13 @@ function NotificationsPage() {
                       </label>
                       <label className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Switch
+                          checked={r.notify_new_lead}
+                          onCheckedChange={(v) => toggle(r, { notify_new_lead: v })}
+                        />
+                        Novo lead
+                      </label>
+                      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Switch
                           checked={r.notify_sale}
                           onCheckedChange={(v) => toggle(r, { notify_sale: v })}
                         />
@@ -227,7 +235,12 @@ function NotificationsPage() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="tg-label">Nome</Label>
-              <Input id="tg-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Sócio" />
+              <Input
+                id="tg-label"
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="Sócio"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="tg-chat">ID do chat</Label>

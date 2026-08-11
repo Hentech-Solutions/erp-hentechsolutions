@@ -121,6 +121,46 @@ export async function updateOrderStatus(
   if (error) throw error;
 }
 
+export interface OrderQuoteInput {
+  /** uuid do plano do catálogo, quando o orçamento saiu de um plano cadastrado. */
+  planRefId: string | null;
+  /** `code` do plano — é por ele que `resolve_order_plan` acha o custo real. */
+  planId: string | null;
+  planName: string;
+  planPrice: number;
+  addQuantity: number;
+  addUnitPrice: number;
+}
+
+/**
+ * Define ou corrige o orçamento de um pedido.
+ *
+ * Existe para o fluxo do lead: ele entra pela landing page sem plano e sem
+ * valor, e o preço só nasce depois do atendimento por WhatsApp. Serve também
+ * para corrigir um pedido do site cujo valor foi combinado diferente.
+ *
+ * `total` é derivado aqui, nunca digitado: com o valor total solto, dava para
+ * salvar um pedido em que `plan_price + adicionais` não fecha com `total`, e o
+ * detalhe do pedido exibe as três coisas lado a lado.
+ */
+export async function updateOrderQuote(id: string, input: OrderQuoteInput) {
+  const addSubtotal = input.addQuantity * input.addUnitPrice;
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      plan_ref_id: input.planRefId,
+      plan_id: input.planId,
+      plan_name: input.planName,
+      plan_price: input.planPrice,
+      add_quantity: input.addQuantity,
+      add_unit_price: input.addUnitPrice,
+      add_subtotal: addSubtotal,
+      total: input.planPrice + addSubtotal,
+    })
+    .eq("id", id);
+  if (error) throw error;
+}
+
 export async function deleteOrder(id: string) {
   // Soft delete: um pedido apagado de vez levava junto a rastreabilidade da
   // receita que ele gerou (external_ref "order:<id>" apontando para o nada).

@@ -851,6 +851,7 @@ export type Database = {
           id: string;
           is_active: boolean;
           label: string;
+          notify_new_lead: boolean;
           notify_new_order: boolean;
           notify_sale: boolean;
           updated_at: string;
@@ -861,6 +862,7 @@ export type Database = {
           id?: string;
           is_active?: boolean;
           label: string;
+          notify_new_lead?: boolean;
           notify_new_order?: boolean;
           notify_sale?: boolean;
           updated_at?: string;
@@ -871,6 +873,7 @@ export type Database = {
           id?: string;
           is_active?: boolean;
           label?: string;
+          notify_new_lead?: boolean;
           notify_new_order?: boolean;
           notify_sale?: boolean;
           updated_at?: string;

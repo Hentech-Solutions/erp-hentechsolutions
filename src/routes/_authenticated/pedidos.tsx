@@ -12,6 +12,7 @@ import {
   LayoutGrid,
   List,
   GripVertical,
+  Tag,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/AppShell";
@@ -38,6 +39,7 @@ import {
 } from "@/lib/data/orders";
 import { formatBRL, formatDate } from "@/lib/formatters";
 import { PaymentBadge, PaymentPanel } from "@/components/orders/PaymentBadge";
+import { QuoteForm } from "@/components/orders/QuoteForm";
 
 export const Route = createFileRoute("/_authenticated/pedidos")({
   head: () => ({ meta: [{ title: "Pedidos — Gestão Empresarial" }] }),
@@ -93,6 +95,7 @@ function PedidosPage() {
   const [execMsg, setExecMsg] = useState("");
   const [execSubmitting, setExecSubmitting] = useState(false);
   const [detail, setDetail] = useState<OrderRow | null>(null);
+  const [quoteTarget, setQuoteTarget] = useState<OrderRow | null>(null);
   const qc = useQueryClient();
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["orders", filter],
@@ -152,6 +155,13 @@ function PedidosPage() {
       `Total: ${valueLabel(o.total)}.\n\n` +
       `Em breve entraremos em contato com mais detalhes.`
     );
+  }
+
+  // Fecha o detalhe antes de abrir o orçamento: dois Dialog do Radix
+  // empilhados disputam o foco e o Esc fecha os dois de uma vez.
+  function openQuote(o: OrderRow) {
+    setDetail(null);
+    setQuoteTarget(o);
   }
 
   async function changeStatus(o: OrderRow, status: OrderStatus) {
@@ -416,6 +426,22 @@ function PedidosPage() {
                                 <MessageCircle className="h-3 w-3" /> WhatsApp
                               </Button>
                             </a>
+                            {/* Atalho só onde falta orçar: para o resto, o botão
+                                vive no detalhe e não disputa espaço no card. */}
+                            {o.total === null && o.status !== "cancelado" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 border-sky-500/40 px-2 text-xs text-sky-300 hover:bg-sky-500/10"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setQuoteTarget(o);
+                                }}
+                                title="Definir valor deste pedido"
+                              >
+                                <Tag className="h-3 w-3" /> Orçar
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               variant="ghost"
@@ -546,6 +572,16 @@ function PedidosPage() {
                       <MessageCircle className="h-3.5 w-3.5" /> Conversar no WhatsApp
                     </Button>
                   </a>
+                  {o.status !== "cancelado" && (
+                    <Button
+                      size="sm"
+                      variant={o.total === null ? "default" : "outline"}
+                      onClick={() => setQuoteTarget(o)}
+                    >
+                      <Tag className="h-3.5 w-3.5" />
+                      {o.total === null ? "Definir valor" : "Editar orçamento"}
+                    </Button>
+                  )}
                   {o.status === "pendente" && (
                     <Button
                       size="sm"
@@ -757,6 +793,17 @@ function PedidosPage() {
                     <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
                   </Button>
                 </a>
+                {detail.status !== "cancelado" && (
+                  <Button
+                    variant={detail.total === null ? "default" : "outline"}
+                    size="sm"
+                    className="w-full sm:w-auto"
+                    onClick={() => openQuote(detail)}
+                  >
+                    <Tag className="h-3.5 w-3.5" />
+                    {detail.total === null ? "Definir valor" : "Editar orçamento"}
+                  </Button>
+                )}
                 {detail.status !== "concluido" && detail.status !== "cancelado" && (
                   <Button
                     size="sm"
@@ -775,6 +822,12 @@ function PedidosPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <QuoteForm
+        order={quoteTarget}
+        open={!!quoteTarget}
+        onOpenChange={(v) => !v && setQuoteTarget(null)}
+      />
     </AppShell>
   );
 }

@@ -6,11 +6,14 @@ export type TelegramRecipient = {
   chat_id: string;
   notify_new_order: boolean;
   notify_sale: boolean;
+  /** Lead do formulário da landing page — interruptor separado de novo pedido. */
+  notify_new_lead: boolean;
   is_active: boolean;
   created_at: string;
 };
 
-const COLS = "id, label, chat_id, notify_new_order, notify_sale, is_active, created_at";
+const COLS =
+  "id, label, chat_id, notify_new_order, notify_sale, notify_new_lead, is_active, created_at";
 
 export async function listTelegramRecipients(): Promise<TelegramRecipient[]> {
   const { data, error } = await supabase
@@ -30,7 +33,12 @@ export async function createTelegramRecipient(input: { label: string; chat_id: s
 
 export async function updateTelegramRecipient(
   id: string,
-  patch: Partial<Pick<TelegramRecipient, "label" | "chat_id" | "notify_new_order" | "notify_sale" | "is_active">>,
+  patch: Partial<
+    Pick<
+      TelegramRecipient,
+      "label" | "chat_id" | "notify_new_order" | "notify_sale" | "notify_new_lead" | "is_active"
+    >
+  >,
 ) {
   const { error } = await supabase
     .from("telegram_recipients" as never)
@@ -40,6 +48,9 @@ export async function updateTelegramRecipient(
 }
 
 export async function deleteTelegramRecipient(id: string) {
-  const { error } = await supabase.from("telegram_recipients" as never).delete().eq("id", id);
+  const { error } = await supabase
+    .from("telegram_recipients" as never)
+    .delete()
+    .eq("id", id);
   if (error) throw error;
 }
