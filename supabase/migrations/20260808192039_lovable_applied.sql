@@ -1,0 +1,19 @@
+-- ============================================================
+-- Placeholder de reconciliacao de historico — versao 20260808192039
+--
+-- Esta migration foi aplicada no banco remoto pelo Lovable, que registra com
+-- timestamp proprio. O arquivo nunca existiu neste repositorio, e o SQL original
+-- ficou apenas na tabela supabase_migrations.schema_migrations do remoto.
+--
+-- Sem este arquivo, `supabase db push` recusa qualquer operacao com
+-- "Remote migration versions not found in local migrations directory".
+--
+-- Intencionalmente VAZIO: o efeito ja esta no banco e reaplicar as cegas seria
+-- pior do que nao aplicar. A alternativa (`migration repair --status reverted`)
+-- apagaria a linha do historico e com ela o registro de que a mudanca existiu.
+--
+-- ATENCAO: por ser vazio, um `supabase db reset` do zero NAO reproduz o efeito
+-- desta versao. Para recuperar o SQL de verdade, leia a coluna `statements` de
+-- supabase_migrations.schema_migrations no projeto kvxsqjmzeilfatysegim e
+-- substitua este conteudo.
+-- ============================================================
