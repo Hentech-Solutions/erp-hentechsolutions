@@ -1,7 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageCircle, Play, CheckCircle2, XCircle, Trash2, Inbox, RotateCcw, LayoutGrid, List, GripVertical } from "lucide-react";
+import {
+  MessageCircle,
+  Play,
+  CheckCircle2,
+  XCircle,
+  Trash2,
+  Inbox,
+  RotateCcw,
+  LayoutGrid,
+  List,
+  GripVertical,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
@@ -63,11 +74,22 @@ const KANBAN_COLUMNS: { status: OrderStatus; accent: string }[] = [
 
 const NOTIFY_STATUSES: OrderStatus[] = ["em_negociacao", "em_execucao", "pronto_entrega"];
 
+const isLead = (o: OrderRow) => o.origin === "lead";
+
+/**
+ * Lead entra sem valor de propósito. Exibir "R$ 0,00" afirmaria que o serviço
+ * é de graça — o certo é dizer que ainda não foi orçado.
+ */
+const valueLabel = (v: number | null) => (v === null ? "A definir" : formatBRL(v));
+const planLabel = (o: OrderRow) => o.plan_name ?? "Serviço a definir";
+
 function PedidosPage() {
   const [filter, setFilter] = useState<OrderStatus | "all">("all");
   const [view, setView] = useState<"list" | "kanban">("kanban");
   const [dragOverCol, setDragOverCol] = useState<OrderStatus | null>(null);
-  const [execTarget, setExecTarget] = useState<{ order: OrderRow; status: OrderStatus } | null>(null);
+  const [execTarget, setExecTarget] = useState<{ order: OrderRow; status: OrderStatus } | null>(
+    null,
+  );
   const [execMsg, setExecMsg] = useState("");
   const [execSubmitting, setExecSubmitting] = useState(false);
   const [detail, setDetail] = useState<OrderRow | null>(null);
@@ -78,7 +100,9 @@ function PedidosPage() {
   });
 
   function chatUrl(o: OrderRow) {
-    const msg = `Olá ${o.customer_name}, sobre o seu pedido ${o.code} (plano ${o.plan_name}).`;
+    const msg = isLead(o)
+      ? `Olá ${o.customer_name}, aqui é da Hentech Solutions. Recebemos o seu contato pelo site (${o.code}) e queremos entender melhor o seu projeto.`
+      : `Olá ${o.customer_name}, sobre o seu pedido ${o.code} (plano ${o.plan_name}).`;
     return buildWhatsappUrl(o.customer_whatsapp, msg);
   }
 
@@ -87,12 +111,25 @@ function PedidosPage() {
       o.add_quantity > 0
         ? `\nAdicionais: ${o.add_quantity} × ${formatBRL(o.add_unit_price)} = ${formatBRL(o.add_subtotal)}`
         : "";
+    // Lead ainda nao tem plano nem valor: mandar "Plano: null — R$ 0,00" seria
+    // pior do que nao mandar nada. Aqui a conversa comeca pelo escopo.
+    if (isLead(o) && status === "em_negociacao") {
+      return (
+        `Olá ${o.customer_name}! Tudo bem? 👋\n\n` +
+        `Aqui é da Hentech Solutions. Recebemos a sua solicitação pelo site (*${o.code}*) e já estou com ela em mãos.\n\n` +
+        `Para eu montar um orçamento certo, me conta:\n` +
+        `• Qual problema você quer resolver?\n` +
+        `• Já existe algum sistema ou site hoje?\n` +
+        `• Tem prazo em mente?\n\n` +
+        `Assim que eu tiver isso, te envio a proposta com valor e prazo.`
+      );
+    }
     if (status === "em_negociacao") {
       return (
         `Olá ${o.customer_name}! Tudo bem? 👋\n\n` +
         `Aqui é da Hentech Solutions. Recebemos o seu pedido *${o.code}* e passo as informações para confirmarmos:\n\n` +
-        `• Plano: ${o.plan_name} — ${formatBRL(o.plan_price)}${adicionais}\n` +
-        `• Valor total: *${formatBRL(o.total)}*\n\n` +
+        `• Plano: ${planLabel(o)} — ${valueLabel(o.plan_price)}${adicionais}\n` +
+        `• Valor total: *${valueLabel(o.total)}*\n\n` +
         `A forma de pagamento é via *PIX*.\n\n` +
         `Podemos seguir com a negociação e iniciar os processos?`
       );
@@ -100,7 +137,7 @@ function PedidosPage() {
     if (status === "pronto_entrega") {
       return (
         `Olá ${o.customer_name}! ✅\n\n` +
-        `Seu pedido *${o.code}* (${o.plan_name}) está *pronto*!\n\n` +
+        `Seu pedido *${o.code}* (${planLabel(o)}) está *pronto*!\n\n` +
         `Qual a melhor forma para realizarmos a entrega?\n` +
         `1️⃣ Retirar em local combinado\n` +
         `2️⃣ Entrega pelos Correios (+ taxas)\n` +
@@ -111,13 +148,21 @@ function PedidosPage() {
     }
     return (
       `Olá ${o.customer_name}! 🎉\n\n` +
-      `Seu pedido *${o.code}* (plano *${o.plan_name}*) entrou em execução.\n` +
-      `Total: ${formatBRL(o.total)}.\n\n` +
+      `Seu pedido *${o.code}* (plano *${planLabel(o)}*) entrou em execução.\n` +
+      `Total: ${valueLabel(o.total)}.\n\n` +
       `Em breve entraremos em contato com mais detalhes.`
     );
   }
 
   async function changeStatus(o: OrderRow, status: OrderStatus) {
+    // Concluir dispara o lançamento da venda, e venda sem valor não existe.
+    // Barrar aqui evita mover o card e só então descobrir que a RPC recusou.
+    if (status === "concluido" && o.total === null) {
+      toast.error("Defina o valor antes de concluir.", {
+        description: `${o.code} entrou como lead e ainda não tem valor — informe o plano e o total para lançar a venda.`,
+      });
+      return;
+    }
     if (NOTIFY_STATUSES.includes(status)) {
       setExecTarget({ order: o, status });
       setExecMsg(statusMessage(o, status));
@@ -130,8 +175,8 @@ function PedidosPage() {
         if (res.status === "created") {
           toast.success(
             res.settled
-              ? `Venda de ${formatBRL(Number(o.total))} lançada e liquidada.`
-              : `Venda de ${formatBRL(Number(o.total))} lançada em Contas a Receber.`,
+              ? `Venda de ${valueLabel(o.total)} lançada e liquidada.`
+              : `Venda de ${valueLabel(o.total)} lançada em Contas a Receber.`,
           );
           if (res.plan_matched === false) {
             toast.warning("Nenhum plano do catálogo bateu — custo entrou como zero.", {
@@ -156,11 +201,7 @@ function PedidosPage() {
     const { order, status } = execTarget;
     setExecSubmitting(true);
     try {
-      window.open(
-        buildWhatsappUrl(order.customer_whatsapp, execMsg),
-        "_blank",
-        "noopener",
-      );
+      window.open(buildWhatsappUrl(order.customer_whatsapp, execMsg), "_blank", "noopener");
       await updateOrderStatus(order.id, status, { notified: true });
       toast.success(`Pedido movido para "${STATUS_LABEL[status]}". WhatsApp aberto.`);
       qc.invalidateQueries({ queryKey: ["orders"] });
@@ -270,7 +311,8 @@ function PedidosPage() {
           <div className="kanban-scroll flex gap-3 sm:gap-4 overflow-x-auto pb-2 h-[calc(100vh-18rem)] min-h-[440px] items-stretch">
             {KANBAN_COLUMNS.map((col) => {
               const items = orders.filter((o) => o.status === col.status);
-              const colValue = items.reduce((s, o) => s + Number(o.total), 0);
+              const colValue = items.reduce((s, o) => s + Number(o.total ?? 0), 0);
+              const leadCount = items.filter(isLead).length;
               const isOver = dragOverCol === col.status;
               return (
                 <div
@@ -285,7 +327,9 @@ function PedidosPage() {
                   }}
                   onDrop={(e) => onDropCol(e, col.status)}
                   className={`flex h-full w-[76vw] max-w-[300px] sm:w-[280px] shrink-0 flex-col overflow-hidden rounded-xl border bg-card/40 border-t-4 ${col.accent} transition ${
-                    isOver ? "border-primary/60 bg-primary/5 ring-1 ring-primary/40" : "border-border"
+                    isOver
+                      ? "border-primary/60 bg-primary/5 ring-1 ring-primary/40"
+                      : "border-border"
                   }`}
                 >
                   <div className="flex shrink-0 items-center justify-between gap-2 px-3 py-3 border-b border-border/60">
@@ -298,6 +342,9 @@ function PedidosPage() {
                       </div>
                       <div className="text-[10px] text-muted-foreground tabular-nums">
                         {formatBRL(colValue)}
+                        {leadCount > 0 && (
+                          <span className="ml-1 normal-case">+ {leadCount} a orçar</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -327,17 +374,36 @@ function PedidosPage() {
                             <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                               {o.code}
                             </span>
-                            <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground" />
+                            <div className="flex items-center gap-1">
+                              {isLead(o) && (
+                                <span className="rounded border border-sky-500/30 bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-sky-400">
+                                  Lead
+                                </span>
+                              )}
+                              <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground" />
+                            </div>
                           </div>
                           <h4 className="mt-2 text-sm font-semibold truncate">{o.customer_name}</h4>
-                          <p className="text-xs text-muted-foreground truncate">{o.plan_name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{planLabel(o)}</p>
                           <div className="mt-2 flex items-center justify-between">
-                            <span className="text-sm font-semibold tabular-nums">{formatBRL(o.total)}</span>
-                            <span className="text-[10px] text-muted-foreground">{formatDate(o.created_at)}</span>
+                            <span
+                              className={`text-sm font-semibold tabular-nums ${
+                                o.total === null ? "text-muted-foreground/70 italic" : ""
+                              }`}
+                            >
+                              {valueLabel(o.total)}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {formatDate(o.created_at)}
+                            </span>
                           </div>
-                          <div className="mt-1.5">
-                            <PaymentBadge status={o.payment_status} />
-                          </div>
+                          {/* Cobrança não começou: badge de pagamento em lead sem valor
+                              só criaria a impressão de que há algo a receber. */}
+                          {o.total !== null && (
+                            <div className="mt-1.5">
+                              <PaymentBadge status={o.payment_status} />
+                            </div>
+                          )}
                           <div className="mt-2 flex gap-1">
                             <a
                               href={chatUrl(o)}
@@ -391,7 +457,15 @@ function PedidosPage() {
                       <Badge variant="outline" className={STATUS_STYLE[o.status]}>
                         {STATUS_LABEL[o.status]}
                       </Badge>
-                      <PaymentBadge status={o.payment_status} />
+                      {isLead(o) && (
+                        <Badge
+                          variant="outline"
+                          className="bg-sky-500/15 text-sky-400 border-sky-500/30"
+                        >
+                          Lead do site
+                        </Badge>
+                      )}
+                      {o.total !== null && <PaymentBadge status={o.payment_status} />}
                       <span className="text-[11px] text-muted-foreground">
                         recebido em {formatDate(o.created_at)}
                       </span>
@@ -399,7 +473,10 @@ function PedidosPage() {
                     <h3 className="text-lg font-semibold tracking-tight truncate">
                       {o.customer_name}
                       {o.customer_company && (
-                        <span className="text-muted-foreground font-normal"> · {o.customer_company}</span>
+                        <span className="text-muted-foreground font-normal">
+                          {" "}
+                          · {o.customer_company}
+                        </span>
                       )}
                     </h3>
                     <p className="text-xs text-muted-foreground">
@@ -408,21 +485,35 @@ function PedidosPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-semibold tabular-nums">{formatBRL(o.total)}</div>
-                    <div className="text-[11px] text-muted-foreground">{o.currency}</div>
+                    <div
+                      className={`text-2xl font-semibold tabular-nums ${
+                        o.total === null ? "text-muted-foreground/70 italic" : ""
+                      }`}
+                    >
+                      {valueLabel(o.total)}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {o.total === null ? "orçar no atendimento" : o.currency}
+                    </div>
                   </div>
                 </header>
 
                 <div className="grid sm:grid-cols-2 gap-4 py-4 text-sm">
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Plano</div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                      Plano
+                    </div>
                     <div>
-                      <span className="font-medium">{o.plan_name}</span>{" "}
-                      <span className="text-muted-foreground">— {formatBRL(o.plan_price)}</span>
+                      <span className="font-medium">{planLabel(o)}</span>{" "}
+                      {o.plan_price !== null && (
+                        <span className="text-muted-foreground">— {formatBRL(o.plan_price)}</span>
+                      )}
                     </div>
                   </div>
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Adicionais</div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                      Adicionais
+                    </div>
                     <div>
                       {o.add_quantity > 0 ? (
                         <>
@@ -441,7 +532,9 @@ function PedidosPage() {
                   </div>
                   {o.notes && (
                     <div className="sm:col-span-2">
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Observações</div>
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                        Observações
+                      </div>
                       <p className="text-muted-foreground whitespace-pre-wrap">{o.notes}</p>
                     </div>
                   )}
@@ -454,17 +547,27 @@ function PedidosPage() {
                     </Button>
                   </a>
                   {o.status === "pendente" && (
-                    <Button size="sm" variant="outline" onClick={() => changeStatus(o, "em_negociacao")}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => changeStatus(o, "em_negociacao")}
+                    >
                       <MessageCircle className="h-3.5 w-3.5" /> Em negociação & notificar
                     </Button>
                   )}
-                  {o.status !== "em_execucao" && o.status !== "concluido" && o.status !== "pronto_entrega" && (
-                    <Button size="sm" onClick={() => changeStatus(o, "em_execucao")}>
-                      <Play className="h-3.5 w-3.5" /> Em execução & notificar
-                    </Button>
-                  )}
+                  {o.status !== "em_execucao" &&
+                    o.status !== "concluido" &&
+                    o.status !== "pronto_entrega" && (
+                      <Button size="sm" onClick={() => changeStatus(o, "em_execucao")}>
+                        <Play className="h-3.5 w-3.5" /> Em execução & notificar
+                      </Button>
+                    )}
                   {o.status === "em_execucao" && (
-                    <Button size="sm" variant="outline" onClick={() => changeStatus(o, "pronto_entrega")}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => changeStatus(o, "pronto_entrega")}
+                    >
                       <CheckCircle2 className="h-3.5 w-3.5" /> Pronto para entrega & notificar
                     </Button>
                   )}
@@ -478,7 +581,11 @@ function PedidosPage() {
                     </Button>
                   )}
                   {o.status !== "cancelado" && o.status !== "concluido" && (
-                    <Button size="sm" variant="outline" onClick={() => changeStatus(o, "cancelado")}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => changeStatus(o, "cancelado")}
+                    >
                       <XCircle className="h-3.5 w-3.5" /> Cancelar
                     </Button>
                   )}
@@ -504,7 +611,10 @@ function PedidosPage() {
         )}
       </div>
 
-      <Dialog open={!!execTarget} onOpenChange={(o) => !o && !execSubmitting && setExecTarget(null)}>
+      <Dialog
+        open={!!execTarget}
+        onOpenChange={(o) => !o && !execSubmitting && setExecTarget(null)}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Notificar cliente no WhatsApp</DialogTitle>
@@ -512,10 +622,12 @@ function PedidosPage() {
               {execTarget && (
                 <>
                   Ao confirmar, o pedido{" "}
-                  <span className="font-mono text-foreground">{execTarget.order.code}</span> será movido
-                  para <span className="text-foreground">{STATUS_LABEL[execTarget.status]}</span> e o WhatsApp de{" "}
-                  <span className="text-foreground">{execTarget.order.customer_name}</span> será aberto
-                  com a mensagem abaixo.
+                  <span className="font-mono text-foreground">{execTarget.order.code}</span> será
+                  movido para{" "}
+                  <span className="text-foreground">{STATUS_LABEL[execTarget.status]}</span> e o
+                  WhatsApp de{" "}
+                  <span className="text-foreground">{execTarget.order.customer_name}</span> será
+                  aberto com a mensagem abaixo.
                 </>
               )}
             </DialogDescription>
@@ -533,11 +645,7 @@ function PedidosPage() {
             </p>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setExecTarget(null)}
-              disabled={execSubmitting}
-            >
+            <Button variant="outline" onClick={() => setExecTarget(null)} disabled={execSubmitting}>
               Cancelar
             </Button>
             <Button onClick={confirmExec} disabled={execSubmitting || !execMsg.trim()}>
@@ -560,7 +668,15 @@ function PedidosPage() {
                   <Badge variant="outline" className={STATUS_STYLE[detail.status]}>
                     {STATUS_LABEL[detail.status]}
                   </Badge>
-                  <PaymentBadge status={detail.payment_status} />
+                  {isLead(detail) && (
+                    <Badge
+                      variant="outline"
+                      className="bg-sky-500/15 text-sky-400 border-sky-500/30"
+                    >
+                      Lead do site
+                    </Badge>
+                  )}
+                  {detail.total !== null && <PaymentBadge status={detail.payment_status} />}
                 </div>
                 <DialogTitle className="text-left text-xl">{detail.customer_name}</DialogTitle>
                 <DialogDescription className="text-left">
@@ -571,11 +687,25 @@ function PedidosPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="rounded-xl border border-border bg-card/60 p-4 flex flex-col justify-between">
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Valor total</div>
-                  <div className="text-2xl sm:text-3xl font-semibold tabular-nums">{formatBRL(detail.total)}</div>
-                  <span className="text-[11px] text-muted-foreground">{detail.currency}</span>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Valor total
+                  </div>
+                  <div
+                    className={`text-2xl sm:text-3xl font-semibold tabular-nums ${
+                      detail.total === null ? "text-muted-foreground/70 italic" : ""
+                    }`}
+                  >
+                    {valueLabel(detail.total)}
+                  </div>
+                  <span className="text-[11px] text-muted-foreground">
+                    {detail.total === null
+                      ? "informe plano e valor após o atendimento"
+                      : detail.currency}
+                  </span>
                 </div>
-                <PaymentPanel order={detail} />
+                {/* Sem valor não há pagamento a acompanhar; o painel volta
+                    assim que o pedido for precificado no ERP. */}
+                {detail.total !== null && <PaymentPanel order={detail} />}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -583,8 +713,14 @@ function PedidosPage() {
                 <Field label="WhatsApp">{detail.customer_whatsapp}</Field>
                 {detail.customer_role && <Field label="Cargo">{detail.customer_role}</Field>}
                 <Field label="Plano">
-                  <span className="font-medium">{detail.plan_name}</span>{" "}
-                  <span className="text-muted-foreground">— {formatBRL(detail.plan_price)}</span>
+                  <span
+                    className={detail.plan_name ? "font-medium" : "text-muted-foreground italic"}
+                  >
+                    {planLabel(detail)}
+                  </span>{" "}
+                  {detail.plan_price !== null && (
+                    <span className="text-muted-foreground">— {formatBRL(detail.plan_price)}</span>
+                  )}
                 </Field>
                 <Field label="Adicionais">
                   {detail.add_quantity > 0 ? (
@@ -603,7 +739,7 @@ function PedidosPage() {
                 </Field>
                 {detail.notes && (
                   <div className="sm:col-span-2">
-                    <Field label="Observações">
+                    <Field label={isLead(detail) ? "Mensagem do lead" : "Observações"}>
                       <p className="text-muted-foreground whitespace-pre-wrap">{detail.notes}</p>
                     </Field>
                   </div>

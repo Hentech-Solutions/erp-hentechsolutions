@@ -214,6 +214,33 @@ if (res.status === 201) {
               <FieldTable rows={ROOT_FIELDS} />
             </FieldGroup>
 
+            <FieldGroup title='lead — payload alternativo (origin: "lead")'>
+              <FieldTable rows={LEAD_FIELDS} />
+              <p className="mt-2 text-xs text-muted-foreground">
+                Formulário de captação da landing page. Manda só contato e mensagem: nesse formato{" "}
+                <code className="font-mono">plan</code>,{" "}
+                <code className="font-mono">additionals</code> e{" "}
+                <code className="font-mono">summary</code> não são aceitos — o pedido entra no
+                kanban em <strong>Entrada</strong> sem valor, e o preço é definido aqui dentro
+                depois do atendimento por WhatsApp.
+              </p>
+              <CodeBlock
+                label="POST /api/public/orders — lead"
+                code={`{
+  "origin": "lead",
+  "order": { "code": "HTS-L7K2P4", "created_at": "2026-08-10T14:32:00.000Z" },
+  "customer": {
+    "nome": "Maria Souza",
+    "whatsapp": "+5511999998888",
+    "email": "maria@empresa.com.br",
+    "empresa": "Empresa LTDA"
+  },
+  "message": "Preciso de um sistema de gestão para minha clínica.",
+  "source": "landing-page/servicos"
+}`}
+              />
+            </FieldGroup>
+
             <Callout tone="warning" icon={AlertTriangle}>
               <strong>O ERP não recalcula o total.</strong> O valor de{" "}
               <code className="font-mono">summary.total</code> é gravado como veio. Se o site errar
@@ -620,6 +647,30 @@ const ROOT_FIELDS: FieldRow[] = [
     required: false,
     rule: "—",
     desc: "Observações livres do cliente. Aparecem no detalhe do pedido.",
+  },
+];
+
+const LEAD_FIELDS: FieldRow[] = [
+  {
+    path: "origin",
+    type: '"lead"',
+    required: true,
+    rule: 'literal "lead"',
+    desc: "Marca o pedido como captação. Sem esse campo o contrato é o de pedido fechado, que exige plano e total.",
+  },
+  {
+    path: "message",
+    type: "string",
+    required: true,
+    rule: "1–4000 caracteres",
+    desc: "A mensagem que o lead escreveu. Vira as observações do pedido e é o que se lê antes de chamar no WhatsApp.",
+  },
+  {
+    path: "source",
+    type: "string",
+    required: false,
+    rule: "até 120 caracteres",
+    desc: "De onde o formulário foi enviado (seção, campanha). Anexado às observações para saber o que converteu.",
   },
 ];
 

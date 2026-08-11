@@ -63,7 +63,9 @@ export function PaymentPanel({ order }: { order: OrderRow }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const pending = Number(order.total) - Number(order.paid_amount ?? 0);
+  // `total` é nulo enquanto o pedido é só um lead sem orçamento fechado.
+  const orderTotal = Number(order.total ?? 0);
+  const pending = orderTotal - Number(order.paid_amount ?? 0);
 
   return (
     <div className="rounded-lg border border-border p-4 space-y-3">
@@ -75,7 +77,7 @@ export function PaymentPanel({ order }: { order: OrderRow }) {
       <div className="space-y-1 text-sm">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Total do pedido</span>
-          <span className="tabular-nums">{formatBRL(order.total)}</span>
+          <span className="tabular-nums">{formatBRL(orderTotal)}</span>
         </div>
         {order.payment_status !== "aguardando" && (
           <div className="flex justify-between">

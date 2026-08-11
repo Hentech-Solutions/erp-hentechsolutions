@@ -5,6 +5,21 @@ import { notifySaleCompleted } from "@/lib/telegram.functions";
 export type OrderStatus =
   "pendente" | "em_negociacao" | "em_execucao" | "pronto_entrega" | "concluido" | "cancelado";
 
+/**
+ * De onde o pedido veio.
+ *  - `site`: fechado com plano e valor (checkout da uicard, por exemplo)
+ *  - `lead`: formulario da landing page — nasce sem plano e sem valor, que sao
+ *    definidos aqui dentro depois do atendimento por WhatsApp
+ *  - `manual`: lancado a mao no ERP
+ */
+export type OrderOrigin = "site" | "lead" | "manual";
+
+export const ORIGIN_LABEL: Record<OrderOrigin, string> = {
+  site: "Pedido do site",
+  lead: "Lead do site",
+  manual: "Lançado manualmente",
+};
+
 export interface OrderRow {
   id: string;
   code: string;
@@ -14,16 +29,18 @@ export interface OrderRow {
   customer_email: string;
   customer_company: string | null;
   customer_role: string | null;
-  plan_id: string;
-  plan_name: string;
-  plan_price: number;
+  /** null em lead: plano e valor sao definidos no atendimento, nao no formulario. */
+  plan_id: string | null;
+  plan_name: string | null;
+  plan_price: number | null;
   add_quantity: number;
   add_unit_price: number;
   add_subtotal: number;
   add_discount_applied: boolean;
   add_saving: number;
-  total: number;
+  total: number | null;
   currency: string;
+  origin: OrderOrigin;
   notes: string | null;
   status: OrderStatus;
   status_changed_at: string | null;
@@ -71,20 +88,20 @@ export const ORDER_STATUSES: OrderStatus[] = [
 export async function getOrdersStats(): Promise<OrdersStats> {
   const rows = await listOrders("all");
   const total = rows.length;
-  const totalValue = rows.reduce((s, r) => s + Number(r.total), 0);
+  const sumTotal = (list: OrderRow[]) => list.reduce((s, r) => s + Number(r.total ?? 0), 0);
+  const totalValue = sumTotal(rows);
   const byStatus = ORDER_STATUSES.map((status) => {
     const items = rows.filter((r) => r.status === status);
-    return {
-      status,
-      count: items.length,
-      value: items.reduce((s, r) => s + Number(r.total), 0),
-    };
+    return { status, count: items.length, value: sumTotal(items) };
   });
   const done = byStatus.find((b) => b.status === "concluido")?.count ?? 0;
+  // Ticket medio sobre pedidos precificados: incluir lead ainda sem valor no
+  // divisor derrubaria o ticket a cada contato novo que chega pela LP.
+  const priced = rows.filter((r) => r.total !== null);
   return {
     total,
     totalValue,
-    ticket: total > 0 ? totalValue / total : 0,
+    ticket: priced.length > 0 ? sumTotal(priced) / priced.length : 0,
     byStatus,
     conversion: total > 0 ? (done / total) * 100 : 0,
   };
@@ -138,7 +155,7 @@ export async function registerOrderSale(order: OrderRow): Promise<RegisterSaleRe
   const res = await rpc<RegisterSaleResult>("register_order_sale", { _order_id: order.id });
   if (res.status === "created") {
     try {
-      await notifySaleCompleted({ data: { amount: Number(order.total) } });
+      await notifySaleCompleted({ data: { amount: Number(order.total ?? 0) } });
     } catch (e) {
       console.error("Telegram notification failed:", (e as Error).message);
     }

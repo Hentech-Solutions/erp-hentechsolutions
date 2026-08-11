@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import type { TablesInsert } from "@/integrations/supabase/types";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -26,18 +27,26 @@ const nullableStr = z.preprocess(
   z.string().nullable(),
 );
 
-const payloadSchema = z.object({
-  order: z.object({
-    code: z.string().min(1).max(64),
-    created_at: z.string().datetime(),
-  }),
-  customer: z.object({
-    nome: z.string().min(1).max(200),
-    whatsapp: z.string().min(1).max(40),
-    email: z.string().email().max(200),
-    empresa: nullableStr.optional(),
-    cargo: nullableStr.optional(),
-  }),
+const orderIdentity = z.object({
+  code: z.string().min(1).max(64),
+  created_at: z.string().datetime(),
+});
+
+const customerSchema = z.object({
+  nome: z.string().min(1).max(200),
+  whatsapp: z.string().min(1).max(40),
+  email: z.string().email().max(200),
+  empresa: nullableStr.optional(),
+  cargo: nullableStr.optional(),
+});
+
+// Pedido fechado: plano e total continuam obrigatorios, exatamente como antes.
+// Afrouxar isso para todo mundo abriria a porta para um pedido pago entrar sem
+// preco so por omitir o campo.
+const siteOrderSchema = z.object({
+  origin: z.literal("site").optional().default("site"),
+  order: orderIdentity,
+  customer: customerSchema,
   plan: z.object({
     id: z.union([z.string(), z.number()]).transform((v) => String(v)),
     name: z.string().min(1).max(200),
@@ -53,13 +62,38 @@ const payloadSchema = z.object({
     })
     .nullable()
     .optional()
-    .transform((v) => v ?? { quantity: 0, unit_price: 0, subtotal: 0, discount_applied: false, saving: 0 }),
+    .transform(
+      (v) => v ?? { quantity: 0, unit_price: 0, subtotal: 0, discount_applied: false, saving: 0 },
+    ),
   summary: z.object({
     total: z.number().nonnegative(),
     currency: z.string().min(3).max(8),
   }),
   notes: nullableStr.optional(),
 });
+
+// Lead da landing page: so contato + mensagem. Plano e valor sao definidos no
+// ERP depois do atendimento por WhatsApp, por isso nem sao aceitos aqui — se
+// viessem, um formulario publico estaria ditando preco.
+const leadOrderSchema = z.object({
+  origin: z.literal("lead"),
+  order: orderIdentity,
+  customer: customerSchema,
+  message: z.string().min(1, "mensagem obrigatoria").max(4000),
+  source: z.string().max(120).optional(),
+});
+
+const payloadSchema = z.discriminatedUnion("origin", [
+  siteOrderSchema.extend({ origin: z.literal("site") }),
+  leadOrderSchema,
+]);
+
+// Payload sem `origin` e o contrato legado da uicard — segue valendo.
+function parsePayload(body: unknown) {
+  const hasOrigin =
+    typeof body === "object" && body !== null && "origin" in (body as Record<string, unknown>);
+  return hasOrigin ? payloadSchema.safeParse(body) : siteOrderSchema.safeParse(body);
+}
 
 export const Route = createFileRoute("/api/public/orders")({
   server: {
@@ -92,35 +126,57 @@ export const Route = createFileRoute("/api/public/orders")({
         } catch {
           return json({ error: "Invalid JSON" }, 400);
         }
-        const parsed = payloadSchema.safeParse(body);
+        const parsed = parsePayload(body);
         if (!parsed.success) {
           return json({ error: "Validation failed", issues: parsed.error.issues }, 400);
         }
         const p = parsed.data;
+        const isLead = p.origin === "lead";
+
+        const common = {
+          code: p.order.code,
+          order_created_at: p.order.created_at,
+          customer_name: p.customer.nome,
+          customer_whatsapp: p.customer.whatsapp,
+          customer_email: p.customer.email,
+          customer_company: p.customer.empresa ?? null,
+          customer_role: p.customer.cargo ?? null,
+          status: "pendente" as const,
+          raw_payload: p as never,
+        };
+
+        // Lead entra no mesmo kanban, na mesma primeira coluna, mas sem plano,
+        // sem adicionais e sem total: esses campos nascem no atendimento.
+        const row: TablesInsert<"orders"> = isLead
+          ? {
+              ...common,
+              origin: "lead" as const,
+              plan_id: null,
+              plan_name: null,
+              plan_price: null,
+              total: null,
+              currency: "BRL",
+              notes: p.source ? `${p.message}\n\n[origem: ${p.source}]` : p.message,
+            }
+          : {
+              ...common,
+              origin: "site" as const,
+              plan_id: p.plan.id,
+              plan_name: p.plan.name,
+              plan_price: p.plan.price,
+              add_quantity: p.additionals.quantity,
+              add_unit_price: p.additionals.unit_price,
+              add_subtotal: p.additionals.subtotal,
+              add_discount_applied: p.additionals.discount_applied,
+              add_saving: p.additionals.saving,
+              total: p.summary.total,
+              currency: p.summary.currency,
+              notes: p.notes ?? null,
+            };
+
         const { data, error } = await supabaseAdmin
           .from("orders")
-          .insert({
-            code: p.order.code,
-            order_created_at: p.order.created_at,
-            customer_name: p.customer.nome,
-            customer_whatsapp: p.customer.whatsapp,
-            customer_email: p.customer.email,
-            customer_company: p.customer.empresa ?? null,
-            customer_role: p.customer.cargo ?? null,
-            plan_id: p.plan.id,
-            plan_name: p.plan.name,
-            plan_price: p.plan.price,
-            add_quantity: p.additionals.quantity,
-            add_unit_price: p.additionals.unit_price,
-            add_subtotal: p.additionals.subtotal,
-            add_discount_applied: p.additionals.discount_applied,
-            add_saving: p.additionals.saving,
-            total: p.summary.total,
-            currency: p.summary.currency,
-            notes: p.notes ?? null,
-            status: "pendente",
-            raw_payload: p as never,
-          })
+          .insert(row)
           .select("id, code, status")
           .single();
         if (error) {
@@ -132,8 +188,11 @@ export const Route = createFileRoute("/api/public/orders")({
         try {
           const { notifyTelegram } = await import("@/lib/telegram.server");
           const firstName = p.customer.nome.split(" ")[0] ?? "";
-
-          await notifyTelegram("new_order", p.summary.total, firstName);
+          if (isLead) {
+            await notifyTelegram("new_lead", null, firstName);
+          } else {
+            await notifyTelegram("new_order", p.summary.total, firstName);
+          }
         } catch (e) {
           console.error("Telegram notification failed:", (e as Error).message);
         }

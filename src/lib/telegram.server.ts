@@ -1,4 +1,4 @@
-type NotifyKind = "new_order" | "sale";
+type NotifyKind = "new_order" | "sale" | "new_lead";
 
 const brl = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v ?? 0));
@@ -8,7 +8,11 @@ const brl = (v: number) =>
  * corresponding notification kind enabled. Never throws — notification
  * failures must not break the business operation.
  */
-export async function notifyTelegram(kind: NotifyKind, amount: number, firstName: string): Promise<void> {
+export async function notifyTelegram(
+  kind: NotifyKind,
+  amount: number | null,
+  firstName: string,
+): Promise<void> {
   try {
     const token = process.env.TELEGRAM_BOT_TOKEN;
     if (!token) {
@@ -16,7 +20,8 @@ export async function notifyTelegram(kind: NotifyKind, amount: number, firstName
       return;
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const column = kind === "new_order" ? "notify_new_order" : "notify_sale";
+    // Lead reaproveita quem já recebe pedido novo: é o mesmo plantão comercial.
+    const column = kind === "sale" ? "notify_sale" : "notify_new_order";
     const { data, error } = await supabaseAdmin
       .from("telegram_recipients")
       .select("chat_id")
@@ -30,9 +35,11 @@ export async function notifyTelegram(kind: NotifyKind, amount: number, firstName
     if (recipients.length === 0) return;
 
     const text =
-      kind === "new_order"
-        ? `💹 ${firstName} fez um pedido de ${brl(amount)} Recebido`
-        : `💲Venda Realizada\nValor: ${brl(amount)}`;
+      kind === "new_lead"
+        ? `🎯 Novo lead pelo site: ${firstName}\nEntre em contato pelo WhatsApp para orçar.`
+        : kind === "new_order"
+          ? `💹 ${firstName} fez um pedido de ${brl(amount ?? 0)} Recebido`
+          : `💲Venda Realizada\nValor: ${brl(amount ?? 0)}`;
 
     await Promise.all(
       recipients.map(async (r) => {
