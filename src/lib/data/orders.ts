@@ -144,13 +144,18 @@ export interface OrderQuoteInput {
  * detalhe do pedido exibe as três coisas lado a lado.
  */
 export async function updateOrderQuote(id: string, input: OrderQuoteInput) {
+  const planName = input.planName.trim();
+  if (!planName) throw new Error("Informe a descrição do serviço.");
   const addSubtotal = input.addQuantity * input.addUnitPrice;
   const { error } = await supabase
     .from("orders")
     .update({
       plan_ref_id: input.planRefId,
-      plan_id: input.planId,
-      plan_name: input.planName,
+      // Pedidos site/manual precisam de plan_id não nulo pela constraint. Para
+      // orçamento avulso, persiste um identificador textual estável e não
+      // confunde o serviço personalizado com um plano do catálogo.
+      plan_id: input.planId ?? `custom:${planName}`,
+      plan_name: planName,
       plan_price: input.planPrice,
       add_quantity: input.addQuantity,
       add_unit_price: input.addUnitPrice,

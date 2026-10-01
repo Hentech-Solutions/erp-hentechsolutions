@@ -14,7 +14,7 @@ type RpcCall = (
 
 export async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
   const call = supabase.rpc as unknown as RpcCall;
-  const { data, error } = await call(fn, args);
+  const { data, error } = await call.call(supabase, fn, args);
   if (error) throw new Error(`${fn}: ${error.message}`);
   return data as T;
 }

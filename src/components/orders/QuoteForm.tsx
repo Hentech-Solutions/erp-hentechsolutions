@@ -99,7 +99,8 @@ export function QuoteForm({
         description: "O pedido já pode ser concluído e lançado como venda.",
       });
       qc.invalidateQueries({ queryKey: ["orders"] });
-      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "funnel"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "actions"] });
       onOpenChange(false);
       onSaved?.();
     },

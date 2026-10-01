@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/AppShell";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { PeriodPicker } from "@/components/dashboard/PeriodPicker";
@@ -27,41 +27,66 @@ import {
 } from "@/lib/data/dashboard";
 import { formatBRL, formatDate } from "@/lib/formatters";
 
+const DASHBOARD_STALE_TIME = 60_000;
+
 export function DashboardView() {
   // Um período só governa a tela inteira. Antes havia três controles de tempo
   // independentes e o bloco de pedidos ignorava todos.
   const [period, setPeriod] = useState<Period>(last12Months());
+  const queryClient = useQueryClient();
   const key = [period.from, period.to];
 
-  const actions = useQuery({ queryKey: ["dashboard", "actions"], queryFn: getActionItems });
+  const actions = useQuery({
+    queryKey: ["dashboard", "actions"],
+    queryFn: getActionItems,
+    staleTime: DASHBOARD_STALE_TIME,
+  });
   const s = useQuery({
     queryKey: ["dashboard", "summary", ...key],
     queryFn: () => getSummary(period),
+    staleTime: DASHBOARD_STALE_TIME,
   });
   const rev = useQuery({
     queryKey: ["dashboard", "rev", ...key],
     queryFn: () => getRevenueSeries(period),
+    staleTime: DASHBOARD_STALE_TIME,
   });
   const cf = useQuery({
     queryKey: ["dashboard", "cf", ...key],
     queryFn: () => getCashFlowSeries(period),
+    staleTime: DASHBOARD_STALE_TIME,
   });
   const exp = useQuery({
     queryKey: ["dashboard", "exp", ...key],
     queryFn: () => getExpenseBreakdown(period),
+    staleTime: DASHBOARD_STALE_TIME,
   });
-  const al = useQuery({ queryKey: ["dashboard", "al", ...key], queryFn: () => getAlerts(period) });
+  const al = useQuery({
+    queryKey: ["dashboard", "al", ...key],
+    queryFn: async () => {
+      const cashFlow = await queryClient.ensureQueryData({
+        queryKey: ["dashboard", "cf", ...key],
+        queryFn: () => getCashFlowSeries(period),
+        staleTime: DASHBOARD_STALE_TIME,
+      });
+      return getAlerts(period, cashFlow);
+    },
+    staleTime: DASHBOARD_STALE_TIME,
+  });
   const funnel = useQuery({
     queryKey: ["dashboard", "funnel", ...key],
     queryFn: () => getOrdersFunnel(period),
+    staleTime: DASHBOARD_STALE_TIME,
   });
   const conc = useQuery({
     queryKey: ["dashboard", "conc", ...key],
     queryFn: () => getRevenueConcentration(period),
+    staleTime: DASHBOARD_STALE_TIME,
   });
   const plans = useQuery({
     queryKey: ["dashboard", "plans", ...key],
     queryFn: () => getPlanPerformance(period),
+    staleTime: DASHBOARD_STALE_TIME,
   });
 
   const d = s.data;

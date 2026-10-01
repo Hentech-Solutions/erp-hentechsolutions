@@ -164,7 +164,7 @@ function PedidosPage() {
     setQuoteTarget(o);
   }
 
-  async function changeStatus(o: OrderRow, status: OrderStatus) {
+  async function changeStatus(o: OrderRow, status: OrderStatus, options?: { notify?: boolean }) {
     // Concluir dispara o lançamento da venda, e venda sem valor não existe.
     // Barrar aqui evita mover o card e só então descobrir que a RPC recusou.
     if (status === "concluido" && o.total === null) {
@@ -173,7 +173,7 @@ function PedidosPage() {
       });
       return;
     }
-    if (NOTIFY_STATUSES.includes(status)) {
+    if (options?.notify !== false && NOTIFY_STATUSES.includes(status)) {
       setExecTarget({ order: o, status });
       setExecMsg(statusMessage(o, status));
       return;
@@ -249,7 +249,9 @@ function PedidosPage() {
       if (from === status) return;
       const o = orders.find((x) => x.id === id);
       if (!o) return;
-      await changeStatus(o, status);
+      // Arrastar atualiza o estágio sem abrir o fluxo de WhatsApp. A notificação
+      // continua disponível nos botões explícitos de ação do pedido.
+      await changeStatus(o, status, { notify: false });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao mover pedido");
     }

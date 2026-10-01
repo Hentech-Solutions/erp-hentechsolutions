@@ -57,7 +57,10 @@ export function PaymentPanel({ order }: { order: OrderRow }) {
       );
       qc.invalidateQueries({ queryKey: ["orders"] });
       qc.invalidateQueries({ queryKey: ["apar"] });
-      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "summary"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "cf"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "al"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "actions"] });
       qc.invalidateQueries({ queryKey: ["entries"] });
     },
     onError: (e: Error) => toast.error(e.message),

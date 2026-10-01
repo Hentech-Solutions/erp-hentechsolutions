@@ -253,10 +253,13 @@ export type Alert = {
   message: string;
 };
 
-export async function getAlerts(p: Period): Promise<Alert[]> {
+export async function getAlerts(
+  p: Period,
+  cashFlow?: Awaited<ReturnType<typeof getCashFlowSeries>>,
+): Promise<Alert[]> {
   const alerts: Alert[] = [];
 
-  const cf = await getCashFlowSeries(p);
+  const cf = cashFlow ?? (await getCashFlowSeries(p));
   const lastBal = cf.at(-1)?.balance ?? 0;
   if (lastBal < 0) {
     alerts.push({

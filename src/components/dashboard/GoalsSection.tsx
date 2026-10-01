@@ -9,6 +9,8 @@ import { formatBRL, formatPercentPlain } from "@/lib/formatters";
 import { getGoalsOverview, getGoalVsRealSeries } from "@/lib/data/goals";
 import type { Period } from "@/lib/periods";
 
+const DASHBOARD_STALE_TIME = 60_000;
+
 function statusBadge(s: "success" | "warning" | "danger") {
   if (s === "success")
     return { cls: "bg-success/15 text-success border-success/30", label: "No alvo" };
@@ -22,10 +24,12 @@ export function GoalsSection({ period }: { period: Period }) {
   const overview = useQuery({
     queryKey: ["goals", "overview", period.from, period.to],
     queryFn: () => getGoalsOverview(period.from, period.to),
+    staleTime: DASHBOARD_STALE_TIME,
   });
   const series = useQuery({
     queryKey: ["goals", "vsreal", period.from, period.to],
     queryFn: () => getGoalVsRealSeries("monthly"),
+    staleTime: DASHBOARD_STALE_TIME,
   });
 
   const m = overview.data;
