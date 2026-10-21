@@ -3,7 +3,12 @@ import { rpc } from "@/lib/data/rpc";
 import { notifySaleCompleted } from "@/lib/telegram.functions";
 
 export type OrderStatus =
-  "pendente" | "em_negociacao" | "em_execucao" | "pronto_entrega" | "concluido" | "cancelado";
+  | "pendente"
+  | "em_negociacao"
+  | "em_execucao"
+  | "pronto_entrega"
+  | "concluido"
+  | "cancelado";
 
 /**
  * De onde o pedido veio.
@@ -66,6 +71,72 @@ export async function listOrders(status?: OrderStatus | "all"): Promise<OrderRow
   const { data, error } = await q;
   if (error) throw error;
   return (data ?? []) as unknown as OrderRow[];
+}
+
+export type ManualOrderInput = {
+  customerName: string;
+  customerWhatsapp: string;
+  customerEmail?: string;
+  customerCompany?: string;
+  serviceName: string;
+  amount: number;
+  orderDate: string;
+  notes?: string;
+};
+
+export async function createManualOrder(input: ManualOrderInput): Promise<OrderRow> {
+  const customerName = input.customerName.trim();
+  const customerWhatsapp = input.customerWhatsapp.trim();
+  const customerEmail = input.customerEmail?.trim() ?? "";
+  const customerCompany = input.customerCompany?.trim() ?? "";
+  const serviceName = input.serviceName.trim();
+  const notes = input.notes?.trim() ?? "";
+  const phoneDigits = customerWhatsapp.replace(/\D/g, "");
+
+  if (!customerName) throw new Error("Informe o nome do cliente.");
+  if (phoneDigits.length < 10) throw new Error("Informe um telefone válido com DDD.");
+  if (!serviceName) throw new Error("Informe a descrição do serviço.");
+  if (!Number.isFinite(input.amount) || input.amount <= 0)
+    throw new Error("Informe um valor maior que zero.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.orderDate))
+    throw new Error("Informe uma data válida para o pedido.");
+  const orderDate = new Date(`${input.orderDate}T12:00:00.000Z`);
+  if (Number.isNaN(orderDate.getTime()) || orderDate.toISOString().slice(0, 10) !== input.orderDate)
+    throw new Error("Informe uma data válida para o pedido.");
+  if (customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail))
+    throw new Error("Informe um e-mail válido.");
+
+  const { data, error } = await supabase
+    .from("orders")
+    .insert({
+      code: `MAN-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+      order_created_at: orderDate.toISOString(),
+      customer_name: customerName,
+      customer_whatsapp: customerWhatsapp,
+      customer_email: customerEmail,
+      customer_company: customerCompany || null,
+      customer_role: null,
+      plan_id: `custom:${serviceName}`,
+      plan_name: serviceName,
+      plan_price: input.amount,
+      add_quantity: 0,
+      add_unit_price: 0,
+      add_subtotal: 0,
+      add_discount_applied: false,
+      add_saving: 0,
+      total: input.amount,
+      currency: "BRL",
+      origin: "manual",
+      notes: notes || null,
+      status: "pendente",
+      status_changed_at: null,
+      notified_at: null,
+      raw_payload: { source: "erp_manual" },
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as unknown as OrderRow;
 }
 
 export interface OrdersStats {

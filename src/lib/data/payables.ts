@@ -5,9 +5,7 @@ import { rpc } from "@/lib/data/rpc";
 /**
  * Contas a Pagar e a Receber.
  *
- * `is_settled`, `payment_date` e o indice `idx_fe_settled` existiam desde a
- * primeira migration e nunca foram lidos por nenhuma tela. A base tem
- * R$ 1.589.944 em aberto que o sistema nao mostrava em lugar nenhum.
+ * Consulta lancamentos nao liquidados para compor contas a pagar e a receber.
  */
 
 export type Direction = "receivable" | "payable";
@@ -147,7 +145,7 @@ export async function listOpenEntries(f: OpenEntryFilters) {
   const { data, count, error } = await q;
   if (error) throw error;
   return {
-    data: (data ?? []) as unknown as OpenEntry[],
+    data: (data ?? []) as OpenEntry[],
     total: count ?? 0,
     page,
     pageSize,

@@ -311,6 +311,13 @@ export type Database = {
             referencedRelation: "v_product_metrics";
             referencedColumns: ["id"];
           },
+          {
+            foreignKeyName: "financial_entries_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
+            referencedColumns: ["id"];
+          },
         ];
       };
       financial_statements: {

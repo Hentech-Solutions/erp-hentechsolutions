@@ -13,6 +13,7 @@ import {
   List,
   GripVertical,
   Tag,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/AppShell";
@@ -40,6 +41,7 @@ import {
 import { formatBRL, formatDate } from "@/lib/formatters";
 import { PaymentBadge, PaymentPanel } from "@/components/orders/PaymentBadge";
 import { QuoteForm } from "@/components/orders/QuoteForm";
+import { ManualOrderForm } from "@/components/orders/ManualOrderForm";
 
 export const Route = createFileRoute("/_authenticated/pedidos")({
   head: () => ({ meta: [{ title: "Pedidos — Gestão Empresarial" }] }),
@@ -96,6 +98,7 @@ function PedidosPage() {
   const [execSubmitting, setExecSubmitting] = useState(false);
   const [detail, setDetail] = useState<OrderRow | null>(null);
   const [quoteTarget, setQuoteTarget] = useState<OrderRow | null>(null);
+  const [manualOrderOpen, setManualOrderOpen] = useState(false);
   const qc = useQueryClient();
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["orders", filter],
@@ -264,10 +267,13 @@ function PedidosPage() {
           <div>
             <h2 className="text-2xl font-semibold tracking-tight">Pedidos recebidos</h2>
             <p className="text-sm text-muted-foreground">
-              Pedidos recebidos via integração externa. Atualize o status e notifique o cliente.
+              Gerencie pedidos recebidos pelo site ou registrados manualmente no ERP.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={() => setManualOrderOpen(true)}>
+              <Plus className="mr-1 h-4 w-4" /> Adicionar pedido
+            </Button>
             {view === "list" && (
               <div className="flex flex-wrap gap-1.5 rounded-lg border border-border bg-card p-1">
                 {FILTERS.map((f) => (
@@ -392,6 +398,11 @@ function PedidosPage() {
                                   Lead
                                 </span>
                               )}
+                              {o.origin === "manual" && (
+                                <span className="rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary">
+                                  Manual
+                                </span>
+                              )}
                               <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground" />
                             </div>
                           </div>
@@ -491,6 +502,14 @@ function PedidosPage() {
                           className="bg-sky-500/15 text-sky-400 border-sky-500/30"
                         >
                           Lead do site
+                        </Badge>
+                      )}
+                      {o.origin === "manual" && (
+                        <Badge
+                          variant="outline"
+                          className="border-primary/30 bg-primary/10 text-primary"
+                        >
+                          Lançado manualmente
                         </Badge>
                       )}
                       {o.total !== null && <PaymentBadge status={o.payment_status} />}
@@ -714,6 +733,14 @@ function PedidosPage() {
                       Lead do site
                     </Badge>
                   )}
+                  {detail.origin === "manual" && (
+                    <Badge
+                      variant="outline"
+                      className="border-primary/30 bg-primary/10 text-primary"
+                    >
+                      Lançado manualmente
+                    </Badge>
+                  )}
                   {detail.total !== null && <PaymentBadge status={detail.payment_status} />}
                 </div>
                 <DialogTitle className="text-left text-xl">{detail.customer_name}</DialogTitle>
@@ -830,6 +857,7 @@ function PedidosPage() {
         open={!!quoteTarget}
         onOpenChange={(v) => !v && setQuoteTarget(null)}
       />
+      <ManualOrderForm open={manualOrderOpen} onOpenChange={setManualOrderOpen} />
     </AppShell>
   );
 }

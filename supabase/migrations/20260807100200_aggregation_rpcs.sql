@@ -200,8 +200,7 @@ END $$;
 -- ------------------------------------------------------------
 -- Contas a Pagar / a Receber com aging
 -- ------------------------------------------------------------
--- is_settled / payment_date / idx_fe_settled ja existiam e nunca foram lidos.
--- A base tem R$ 1.589.944 em aberto, invisivel no sistema hoje.
+-- Considera lancamentos nao liquidados, incluindo vencimentos futuros.
 CREATE OR REPLACE FUNCTION public.get_ap_ar_summary(_as_of DATE DEFAULT CURRENT_DATE)
 RETURNS TABLE (
   direction    TEXT,      -- 'receivable' | 'payable'
